@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Look Up and Down: the sky above you and the world beneath your feet</title>
+<meta name="description" content="Point your phone up to see the planets, stars and constellations above you, or down to see straight through the Earth to the other side of the world, as if it were glass. Free, in the browser.">
+<link rel="canonical" href="https://lookupanddown.com/">
+<meta name="referrer" content="no-referrer">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lookupanddown.com/">
+<meta property="og:site_name" content="Look Up and Down">
+<meta property="og:title" content="Look Up and Down: the sky above you, the world beneath your feet">
+<meta property="og:description" content="Point your phone up for the planets and stars, or down to see straight through the Earth to the other side of the world.">
+<meta property="og:image" content="https://lookupanddown.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The night sky above the horizon, with the Milky Way, and the far side of the world seen through a glass Earth below it">
+<meta property="og:locale" content="en_GB">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Look Up and Down: the sky above you, the world beneath your feet">
+<meta name="twitter:description" content="Point your phone up for the planets and stars, or down to see straight through the Earth to the other side of the world.">
+<meta name="twitter:image" content="https://lookupanddown.com/og-image.png">
+<meta name="theme-color" content="#05080c">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="tte.css">
+<script src="lib/topojson-client.min.js"></script>
+<script type="module" src="tte.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Look Up and Down",
+  "url": "https://lookupanddown.com/",
+  "description": "Point your phone up to see the planets, stars and constellations above you, or down to see straight through the Earth to the other side of the world, as if it were glass. Free, in the browser.",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Any (a phone with a compass for pointing; drag to look on a computer)",
+  "browserRequirements": "Requires JavaScript and WebGL",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Adam Woodland", "url": "https://adamwoodland.com/" }
+}
+</script>
+</head>
+<body>
+<div id="stage">
+	<video id="cam" playsinline muted autoplay aria-hidden="true"></video>
+	<canvas id="view" aria-hidden="true"></canvas>
+	<div id="labels" aria-hidden="true"></div>
+	<div id="reticle" aria-hidden="true"></div>
+</div>
+
+<header id="hudTop">
+	<button id="placeBtn" class="chip" type="button" aria-haspopup="dialog"><span class="lbl">From</span> <span id="placeName">…</span></button>
+	<div class="right">
+		<button id="camBtn" class="icon" type="button" aria-pressed="false" title="Camera on or off">Cam</button>
+		<button id="infoBtn" class="icon" type="button" aria-haspopup="dialog" title="How it works">ⓘ</button>
+	</div>
+	<p id="aimText">…</p>
+	<p id="calib" hidden></p>
+</header>
+
+<section id="card" aria-live="polite">
+	<p class="kicker" id="cKicker">One moment</p>
+	<p class="name" id="cName">…</p>
+	<p class="detail" id="cDetail"></p>
+</section>
+
+<p id="toast" role="status" aria-live="polite"></p>
+
+<dialog id="intro" class="sheet" aria-labelledby="introTitle">
+	<div class="inner">
+		<h1 id="introTitle">Look Up and Down</h1>
+		<p class="lead">Point your phone up to see the planets, stars and constellations above you. Point it down and see straight through the Earth to the other side of the world, as if the planet were glass.</p>
+		<p id="introHint" class="hint">On an iPhone, hold the phone flat over the floor for a moment first, so the compass can settle.</p>
+		<button id="startBtn" class="go" type="button" autofocus>Start looking</button>
+		<button id="startNoCam" class="plain" type="button">Start without the camera</button>
+		<p class="small">Your GPS position and the camera picture stay on your phone: nothing is sent anywhere.</p>
+	</div>
+</dialog>
+
+<dialog id="placeSheet" class="sheet" aria-labelledby="placeTitle">
+	<div class="inner">
+		<button class="close" type="button" aria-label="Close">✕</button>
+		<h2 id="placeTitle">Where are you looking from?</h2>
+		<button id="gpsBtn" class="go" type="button">Use my location</button>
+		<label for="citySel">Or pick a city</label>
+		<select id="citySel"></select>
+	</div>
+</dialog>
+
+<dialog id="about" class="sheet" aria-labelledby="aboutTitle">
+	<div class="inner">
+		<button class="close" type="button" aria-label="Close">✕</button>
+		<h2 id="aboutTitle">How it works</h2>
+		<p>Point the back of your phone anywhere and this page shows what lies that way. Above the horizon it is the sky as it is right now from where you are: the Sun, the Moon, the planets, the brighter stars, the constellations and the Milky Way.</p>
+		<p>Below the horizon, imagine the Earth were made of glass. Look down at your feet and you would see straight through it to the far side of the world, from underneath. The page draws the countries and oceans in that direction, through the planet. Look straight down and you see the exact opposite side of the world; tip the phone towards the horizon and the view sweeps closer to home.</p>
+		<h3>The sky</h3>
+		<p>The sky is the same as on <a href="https://orrery.live/night-sky/">orrery.live's night sky</a>, worked out on your phone for this moment: by day it is blue and the stars are hidden, as they really are. Things below the horizon, such as the Sun at night, keep their names, faint, where they sit beyond the far side of the Earth.</p>
+		<h3>Why it looks back to front</h3>
+		<p>You are seeing the far side from inside the Earth, so the map is the mirror image of the one you know, just as a sign reads backwards from behind a window. The names are written the right way round so you can read them.</p>
+		<h3>The glow</h3>
+		<p>The blue haze towards the edge of the view is the atmosphere, seen at a slant where your line of sight skims the far surface. Look steeply down and you will see faint orange rings: the Earth's liquid outer core and solid inner core, which your line of sight passes through on the way.</p>
+		<h3>Your privacy</h3>
+		<p>Your GPS position and the camera picture are used only on your phone and never leave it. A link that starts somewhere else carries that place after a #, which browsers keep to themselves rather than sending to the website.</p>
+		<h3>How it's worked out</h3>
+		<p>The satellite picture is NASA's Blue Marble (public domain), and places come from Natural Earth's country outlines, the same as on <a href="https://whatsacross.com/">What's Across</a>. Your phone's compass is corrected from magnetic to true north with the World Magnetic Model 2025. The Earth is treated as a perfect sphere, and phone compasses are only good to a few degrees, so a far-away place can be a few hundred km off. The layers the line of sight passes through come from the Preliminary Reference Earth Model (Dziewonski and Anderson, 1981).</p>
+		<p>The planets come from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons. Star data: <a href="https://codeberg.org/astronexus/hyg">HYG database</a> (CC BY-SA 4.0). Constellation figures: <a href="https://github.com/ofrohn/d3-celestial">d3-celestial</a> (BSD-3). Constellation boundaries: IAU (Delporte 1930) via Roman (1987), CDS VI/42. Milky Way: <a href="https://svs.gsfc.nasa.gov/4851">NASA/Goddard Space Flight Center Scientific Visualization Studio</a>, Deep Star Maps 2020; Gaia DR2: ESA/Gaia/DPAC.</p>
+		<p class="note">Just for fun. More tools at <a href="https://games.adamwoodland.com/">Adam's Arcade</a>. Made by <a href="https://adamwoodland.com/">Adam Woodland</a>. Design, code and content developed with the assistance of AI (Anthropic Claude).</p>
+	</div>
+</dialog>
+</body>
+</html>

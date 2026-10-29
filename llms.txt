@@ -1,0 +1,24 @@
+# Look Up and Down (lookupanddown.com)
+
+> Look Up and Down is a free, just-for-fun web page for phones. Point the phone up and it shows the sky for where you are, right now: the Sun, the Moon and its phase, the planets, the brighter stars, constellation lines and names, and the Milky Way. Point it down and the Earth turns to glass: you see straight through the planet to the other side of the world, from underneath, with the countries and oceans named. A card names whatever is in the middle of the view: a planet, star or constellation above the horizon, or, below it, the country or ocean on the far side, how far away it is in a straight line and round the surface, and which of the Earth's layers the line of sight passes through.
+
+How it works: the phone's compass and motion sensors give the direction it is pointing (corrected from magnetic to true north with the World Magnetic Model 2025); without them, or on a computer, you drag to look around. The sky is the same as orrery.live's night sky: planets from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons, and stars from the HYG catalogue. Below the horizon the Earth is drawn from the inside, from NASA's Blue Marble imagery and Natural Earth's country outlines; the far side appears mirror-image, as it would through glass. Looking straight down shows the exact opposite side of the world (the antipode). The Earth's layers come from the Preliminary Reference Earth Model. The camera can show behind the view.
+
+Privacy: everything is worked out on the phone. The location and the camera picture never leave it; there are no cookies or analytics.
+
+Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sky, earth.js, geo.js, texture.js, orientation.js), three.js, MIT-licensed code, no build step, no backend.
+
+## Links
+
+- [Look Up and Down](https://lookupanddown.com/): the page itself, with how it works in its info sheet
+
+## Related
+
+- [orrery.live night sky](https://orrery.live/night-sky/): the sky part on its own, with tonight's planets and a time slider
+- [What's Across](https://whatsacross.com/): what lies across the ocean from any coastline, from the same country data
+- [Adam's Arcade](https://games.adamwoodland.com/): all of the author's free browser games and tools
+- [Adam Woodland](https://adamwoodland.com/): the author, an OT/ICS cybersecurity consultant; this site is a side project
+
+## Contact
+
+- webmaster@lookupanddown.com
