@@ -149,19 +149,23 @@ function bvToColor(bv) { // same ramp as the orrery
 	}
 	return [1, 1, 1];
 }
+// uLimit is the faintest star by the sky's light; below the horizon uLimitBelow and uBelow (how
+// bright stars are there) apply instead: dim and daylit as above with the globe on (it covers
+// them anyway), a dark full-strength sky with the globe hidden (setFullSky).
 const starMat = new THREE.ShaderMaterial({
-	uniforms: { uPixelRatio: { value: 1 }, uLimit: { value: 5.5 }, uZoom: { value: 1 } },
+	uniforms: { uPixelRatio: { value: 1 }, uLimit: { value: 5.5 }, uLimitBelow: { value: 5.5 }, uBelow: { value: 0.35 }, uZoom: { value: 1 } },
 	transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending,
 	vertexShader: `
 		attribute float aSize; attribute float aMag; attribute vec3 aColor;
-		uniform float uPixelRatio; uniform float uLimit; uniform float uZoom;
+		uniform float uPixelRatio; uniform float uLimit; uniform float uLimitBelow; uniform float uBelow; uniform float uZoom;
 		varying vec3 vColor; varying float vAlpha;
 		void main() {
 			vec4 wp = modelMatrix * vec4(position, 1.0);
 			float h = normalize(wp.xyz).y;
-			// Fainter near the horizon (extinction), dim below it, gone past the limiting magnitude.
-			float ext = 0.35 + 0.65 * smoothstep(-0.02, 0.14, h);
-			vAlpha = (1.0 - smoothstep(uLimit - 0.7, uLimit + 0.3, aMag)) * ext;
+			// Fainter near the horizon (extinction), dimmer below it, gone past the limiting magnitude.
+			float ext = mix(uBelow, 1.0, smoothstep(-0.02, 0.14, h));
+			float lim = mix(uLimitBelow, uLimit, smoothstep(-0.02, 0.0, h));
+			vAlpha = (1.0 - smoothstep(lim - 0.7, lim + 0.3, aMag)) * ext;
 			vColor = aColor;
 			gl_Position = projectionMatrix * viewMatrix * wp;
 			gl_PointSize = aSize * uPixelRatio * uZoom;
@@ -398,12 +402,23 @@ export function setTime(t, lat, lon) {
 	const sunAlt = state.sunAlt = bodyObjs.Sun.alt;
 	dome.material.uniforms.uSun.value.copy(bodyObjs.Sun.pos);
 	dome.material.uniforms.uSunAlt.value = sunAlt;
-	starMat.uniforms.uLimit.value = limitingMag(sunAlt);
+	applyLimits();
 	lineMat.opacity = 0.42 * clamp((-sunAlt + 1) / 11, 0.1, 1);
 	milkyMat.opacity = MILKY_MAX * clamp((-sunAlt - 12) / 6, 0, 1);
 	state.moonPhase = A.moonPhase(t);
 	drawMoon(state.moonPhase.fraction);
 	return true;
+}
+// The full sky: with the globe hidden, the half below the horizon is shown as a dark sky at full
+// strength, with its names, whatever the time of day (it is the sky beyond the far side of the
+// Earth, out of our daylight).
+let fullSky = false;
+const DARK = 5.8;
+export function setFullSky(on) { fullSky = !!on; applyLimits(); }
+function applyLimits() {
+	starMat.uniforms.uLimit.value = limitingMag(state.sunAlt);
+	starMat.uniforms.uLimitBelow.value = fullSky ? DARK : starMat.uniforms.uLimit.value;
+	starMat.uniforms.uBelow.value = fullSky ? 0.9 : 0.35;
 }
 // Faintest star you could see for a given Sun altitude (dark site ~6; the catalogue stops at 5).
 function limitingMag(sa) {
@@ -413,7 +428,8 @@ function limitingMag(sa) {
 	if (sa >= -18) return 4.0 + (-12 - sa) / 6 * 1.8;   // -> 5.8 when fully dark
 	return 5.8;
 }
-function bodyVisibleNow(b) { return b.mag < limitingMag(state.sunAlt) + (b.name === 'Moon' || b.name === 'Sun' ? 99 : 0); }
+const below = (alt) => fullSky && alt < -0.5; // in the full sky's dark lower half
+function bodyVisibleNow(b) { return b.mag < (below(b.alt) ? DARK : limitingMag(state.sunAlt)) + (b.name === 'Moon' || b.name === 'Sun' ? 99 : 0); }
 
 // ---- Per frame -------------------------------------------------------------------------------------
 // The camera: at the origin, with the attitude the globe's camera also uses, and the same view.
@@ -440,7 +456,7 @@ function layoutBodies() {
 		} else if (name === 'Moon') {
 			// Real size (0.52°) when zoomed in, enlarged when zoomed out so the phase is legible.
 			s.scale.setScalar(px(Math.max(0.52, 22 / pxPerDeg)));
-			s.material.opacity = b.alt < -1 ? 0.5 : 1;
+			s.material.opacity = b.alt < -1 && !fullSky ? 0.5 : 1;
 			// Turn the lit limb towards the Sun on screen.
 			const a = project(s.position);
 			moonSunDir.copy(bodyObjs.Sun.pos).sub(_tmp.copy(b.pos).multiplyScalar(b.pos.dot(bodyObjs.Sun.pos))).normalize();
@@ -450,14 +466,19 @@ function layoutBodies() {
 			const vis = bodyVisibleNow(b);
 			const sizePx = clamp(17 - b.mag * 2.4, 10, 32) * z;
 			s.scale.setScalar(px(sizePx / pxPerDeg));
-			s.material.opacity = vis ? (b.alt < -1 ? 0.35 : 1) : 0.12;
+			s.material.opacity = vis ? (b.alt < -1 && !fullSky ? 0.35 : 1) : 0.12;
 		}
 	}
 }
 
 // The sky's names, in priority order: bodies and compass points always, then the brightest
-// stars, constellation names and the other named stars. Star and constellation names stop at
-// the horizon: below it is the glass Earth, whose names tte.js places in between (between()).
+// stars, constellation names and the other named stars. Above the horizon star and constellation
+// names show only in the dark. Below it they show only in the full sky (globe hidden); otherwise
+// that half is the glass Earth, whose names tte.js places in between (between()).
+// What Find has picked ({ kind, key }), so its name sits clear of the ring tte.js draws round it.
+let marked = null;
+export function setMarked(m) { marked = m; }
+const isMarked = (kind, key) => !!marked && marked.kind === kind && marked.key === key;
 function properLimit() { const f = camera.fov; return f > 80 ? 2.2 : f > 60 ? 2.7 : f > 42 ? 3.3 : f > 28 ? 4.0 : f > 18 ? 4.6 : 5.1; }
 function desigLimit() { const f = camera.fov; return f > 60 ? -99 : f > 42 ? 2.6 : f > 28 ? 3.4 : f > 18 ? 4.2 : 5.1; }
 export function placeLabels(between) {
@@ -466,30 +487,36 @@ export function placeLabels(between) {
 		const visible = name === 'Sun' || name === 'Moon' || bodyVisibleNow(b);
 		if (!visible) { b.el.hidden = true; continue; }
 		const r = b.sprite.scale.x / (R * 0.9) / DEG * innerHeight / camera.fov / 2; // sprite radius in px
-		if (placeFree(b.el, project(b.sprite.position), 0, Math.max(14, r * 0.55 + 10), b.w, 15, true)) b.el.classList.toggle('below', b.alt < -0.5);
+		if (placeFree(b.el, project(b.sprite.position), 0, Math.max(14, r * 0.55 + 10, isMarked('body', name) ? 32 : 0), b.w, 15, true)) b.el.classList.toggle('below', b.alt < -0.5 && !fullSky);
 	}
 	for (const k of COMPASS) placeFree(k.el, project(azAltToScene(k.az, 0.6, R * 0.95)), 0, -9, k.w, 16, true);
 	if (between) between();
-	const showStars = state.sunAlt < -4;
-	const pLim = showStars ? properLimit() : -99, dLim = showStars ? desigLimit() : -99;
+	const dark = state.sunAlt < -4;
+	if (!dark && !fullSky) {
+		for (const st of starLabels) if (!st.el.hidden) st.el.hidden = true;
+		for (const c of constLabels) c.el.hidden = true;
+		return;
+	}
+	const shown = (y, cut) => (y >= cut ? dark : fullSky); // above the cut: night only; below: full sky only
+	const pLim = properLimit(), dLim = desigLimit();
 	const starLabel = (st) => {
 		_tmp.copy(st.v).multiplyScalar(R).applyMatrix4(eqToScene);
-		if (_tmp.y < 0.5) { if (!st.el.hidden) st.el.hidden = true; return; }
-		placeFree(st.el, project(_tmp), 0, 11, st.w, 12, false);
+		if (!shown(_tmp.y, 0.5)) { if (!st.el.hidden) st.el.hidden = true; return; }
+		placeFree(st.el, project(_tmp), 0, isMarked('star', st.i) ? 32 : 11, st.w, 12, isMarked('star', st.i));
 	};
 	const done = new Set();
 	for (const st of starLabels) {
 		if (st.mag >= 2.0) break;
 		if (st.proper && st.mag <= pLim) { starLabel(st); done.add(st); }
 	}
-	const showC = state.sunAlt < -4 && camera.fov < 95;
+	const showC = camera.fov < 95;
 	// Big/famous figures always; the rest as you zoom in (phones would otherwise drown in names).
 	const maxRank = camera.fov > 70 ? 1 : camera.fov > 40 ? 2 : 3;
 	for (const c of constLabels) {
 		if (!showC || c.rank > maxRank) { c.el.hidden = true; continue; }
 		_tmp.copy(c.v).multiplyScalar(R).applyMatrix4(eqToScene);
-		if (_tmp.y < 2) { c.el.hidden = true; continue; }
-		placeFree(c.el, project(_tmp), 0, 0, c.w, 11, false);
+		if (!shown(_tmp.y, 2)) { c.el.hidden = true; continue; }
+		placeFree(c.el, project(_tmp), 0, isMarked('const', c.i) ? 32 : 0, c.w, 11, isMarked('const', c.i));
 	}
 	for (const st of starLabels) {
 		if (done.has(st)) continue;
@@ -520,13 +547,14 @@ export const bodyTitle = (b) => b.name === 'Moon' ? 'The Moon' : b.name === 'Sun
 // constellation that direction falls in. { kind, kicker, name, detail, color }
 export function describe(fwd) {
 	const day = state.sunAlt > -4;
+	const lit = (alt) => day && !below(alt); // in daylight, unless in the full sky's dark lower half
 	const b = bodyAt(fwd);
 	if (b) {
 		const ph = state.moonPhase;
 		const kicker = b.name === 'Sun' ? 'Our star' : b.name === 'Moon' ? `${ph.name}, ${Math.round(ph.fraction * 100)}% lit · in ${conOf(b.pos)}` : `Planet · in ${conOf(b.pos)}`;
 		const planet = b.name !== 'Sun' && b.name !== 'Moon';
 		const faint = planet && b.mag > 5.5 ? ` · ${b.mag > 6.5 ? 'telescope' : 'binoculars'} only`
-			: planet && day && !bodyVisibleNow(b) ? ' · hidden by daylight' : '';
+			: planet && lit(b.alt) && !bodyVisibleNow(b) ? ' · hidden by daylight' : '';
 		const sun = b.name === 'Sun' && b.alt > 0 ? ' · never look straight at it' : '';
 		const mag = b.name === 'Sun' ? '' : ` · magnitude ${b.mag.toFixed(1)}`;
 		return { kind: 'body', key: b.name, kicker, name: bodyTitle(b), color: BODY_COLOR[b.name],
@@ -543,12 +571,30 @@ export function describe(fwd) {
 	const aa = sceneToAzAlt(fwd);
 	if (star) {
 		const w = sceneToAzAlt(_tmp.copy(star.v).applyMatrix4(eqToScene));
-		const hidden = day && star.mag > limitingMag(state.sunAlt) ? ' · hidden by daylight' : '';
+		const hidden = lit(w.alt) && star.mag > limitingMag(state.sunAlt) ? ' · hidden by daylight' : '';
 		return { kind: 'star', kicker: `Star · in ${constellationAt(star.ra, star.dec)}`, name: star.name || star.desig, color: '#cfe0ff',
 			detail: `${cap(where(w.az, w.alt + A.refraction(w.alt)))} · magnitude ${star.mag.toFixed(1)}${hidden}` };
 	}
-	return { kind: 'const', kicker: day ? 'Constellation · hidden by daylight' : 'Constellation', name: conOf(fwd), color: '#b9cbf2',
+	return { kind: 'const', kicker: lit(aa.alt) ? 'Constellation · hidden by daylight' : 'Constellation', name: conOf(fwd), color: '#b9cbf2',
 		detail: cap(where(aa.az, aa.alt)) };
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 export { A, limitingMag };
+
+// ---- Find: what the search box can aim at ------------------------------------------------------------
+// [{ kind: 'body'|'star'|'const', key, name, sub, rank }]; rank orders equal matches (lower first).
+export function skyItems() {
+	const out = [];
+	for (const name of BODIES) out.push({ kind: 'body', key: name, name: bodyTitle(bodyObjs[name]), sub: name === 'Sun' ? 'our star' : name === 'Moon' ? 'the Moon' : 'planet', rank: 0 });
+	for (const c of constLabels) out.push({ kind: 'const', key: c.i, name: c.name, also: c.abbr, sub: 'constellation', rank: 1 });
+	for (const st of starLabels) {
+		const s = starIndex[st.i];
+		out.push({ kind: 'star', key: st.i, name: st.name, sub: `star in ${constellationAt(s.ra, s.dec)}`, rank: 3 + st.mag / 10 });
+	}
+	return out;
+}
+// The direction of a body, star or constellation now, in the scene frame (unit), into out.
+export function skyDir(kind, key, out) {
+	if (kind === 'body') return out.copy(bodyObjs[key].pos);
+	return out.copy(kind === 'star' ? starIndex[key].v : constLabels[key].v).applyMatrix4(eqToScene).normalize();
+}

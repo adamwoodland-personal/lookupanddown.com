@@ -4,9 +4,11 @@
 
 How it works: the phone's compass and motion sensors give the direction it is pointing (corrected from magnetic to true north with the World Magnetic Model 2025); without them, or on a computer, you drag to look around. The sky is the same as orrery.live's night sky: planets from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons, and stars from the HYG catalogue. Below the horizon the Earth is drawn from the inside, from NASA's Blue Marble imagery and Natural Earth's country outlines; the far side appears mirror-image, as it would through glass. Looking straight down shows the exact opposite side of the world (the antipode). The Earth's layers come from the Preliminary Reference Earth Model. The camera can show behind the view.
 
-Privacy: everything is worked out on the phone. The location and the camera picture never leave it; there are no cookies or analytics.
+Privacy: everything is worked out on the phone. The location and the camera picture never leave it; there are no cookies or analytics. Only a place name typed into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder.
 
-Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sky, earth.js, geo.js, texture.js, orientation.js), three.js, MIT-licensed code, no build step, no backend.
+Features: a Find search for the Sun, Moon, planets, named stars, constellations, countries and oceans (the view turns to the pick, or an arrow shows which way to point the phone), and an Earth button that hides the globe to show the whole sky, including the half below the horizon.
+
+Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sky, places.js for the place search, earth.js, geo.js, texture.js, orientation.js), three.js, MIT-licensed code, no build step, no backend.
 
 ## Links
 

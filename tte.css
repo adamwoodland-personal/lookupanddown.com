@@ -26,8 +26,11 @@ a { color: var(--cyan); }
 }
 .pl.big { font-size: 15px; letter-spacing: 0.02em; }
 .pl.sea { font-weight: 500; font-style: italic; color: #a9dcff; letter-spacing: 0.08em; text-transform: uppercase; font-size: 11px; }
-.pl.opp { color: var(--amber); font-size: 12px; }
-.pl.opp::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border: 2px solid var(--amber); border-radius: 50%; }
+/* The opposite-side marker: tte.js puts the element's top-left 7 px left of and 8 px above the
+   point, so the 14 px ring (in a 16 px line) is centred exactly on it; the words start past the
+   reticle's edge. */
+.pl.opp { color: var(--amber); font-size: 12px; line-height: 16px; padding-left: 30px; }
+.pl.opp::before { content: ""; position: absolute; left: 0; top: 1px; width: 14px; height: 14px; border: 2px solid var(--amber); border-radius: 50%; }
 /* The sky's names, as on orrery.live's night sky (sky.css); skyview.js measures them with these fonts. */
 .b-label, .s-label, .c-label, .k-label {
 	position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform;
@@ -46,6 +49,18 @@ a { color: var(--cyan); }
 	border: 2px solid rgba(76, 242, 255, 0.85); box-shadow: 0 0 10px rgba(76, 242, 255, 0.6); pointer-events: none;
 }
 #reticle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: var(--cyan); }
+/* Find: an amber ring on the target when it's in view, else an arrow at the edge showing the way. */
+#targetMark {
+	position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; pointer-events: none;
+	border: 2px dashed var(--amber); box-shadow: 0 0 12px rgba(255, 181, 71, 0.45); will-change: transform;
+}
+#targetArrow {
+	position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; pointer-events: none;
+	margin: -11px 0 0 -45px; width: 90px; will-change: transform; /* the arrowhead's middle on the anchor point */
+}
+#targetMark[hidden], #targetArrow[hidden] { display: none; }
+#targetArrowHead { display: block; font-size: 22px; line-height: 22px; color: var(--amber); text-shadow: 0 0 8px rgba(0, 0, 0, 0.9); }
+#targetArrowName { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; color: #ffe3b5; text-shadow: 0 0 3px #000, 0 1px 2px #000; }
 
 /* ---- Top bar ---- */
 #hudTop {
@@ -67,6 +82,8 @@ a { color: var(--cyan); }
 .icon { min-width: 40px; padding: 6px 10px; font-family: var(--mono); font-size: 13px; }
 .icon[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 10px rgba(255, 181, 71, 0.35); }
 #placeBtn { justify-self: start; }
+#targetChip { grid-column: 1 / -1; justify-self: start; border-color: rgba(255, 181, 71, 0.6); color: #ffe3b5; font-size: 13px; padding: 4px 12px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---- The card ---- */
 #card {
@@ -107,7 +124,15 @@ dialog.sheet::backdrop { background: rgba(2, 5, 8, 0.72); }
 .sheet .small, .sheet .note { color: var(--muted); font-size: 13px; }
 .sheet .close { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: transparent; cursor: pointer; }
 .sheet label { display: block; margin: 16px 0 6px; color: var(--muted); font-size: 13px; }
-.sheet select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--line); background: #0c1a24; }
+.sheet input[type="search"] { width: 100%; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0c1a24; font-size: 16px; }
+.sheet input[type="search"]:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.srow { display: flex; gap: 8px; }
+.sbtn { flex: none; padding: 0 16px; border-radius: 10px; border: 1px solid var(--cyan); background: #12424b; cursor: pointer; font-weight: 600; }
+.results { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.res { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0c1a24; cursor: pointer; }
+.res:hover, .res:focus-visible { border-color: var(--cyan); }
+.res .rn { display: block; font-weight: 650; }
+.res .rw { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
 .go { display: block; width: 100%; margin: 14px 0 8px; padding: 14px; border-radius: 12px; cursor: pointer; font-weight: 700; font-size: 17px; letter-spacing: 0.04em;
 	border: 1px solid var(--cyan); background: linear-gradient(#1b6d7a, #0d3c45); box-shadow: 0 0 16px rgba(76, 242, 255, 0.35); }
 .plain { display: block; width: 100%; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: transparent; cursor: pointer; }

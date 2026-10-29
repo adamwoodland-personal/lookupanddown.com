@@ -26,6 +26,7 @@ import * as E from './earth.js';
 import * as G from './geo.js';
 import * as SKY from './skyview.js';
 import { dateToDays } from './guide-orbits.js';
+import { geocode } from './places.js';
 import { paintGlobe, paintOverlay, labelPoints, OCEANS } from './texture.js';
 import { OrientationSource, declination, decimalYear } from './orientation.js';
 
@@ -37,7 +38,8 @@ const point = (az) => POINTS[Math.round(az / 22.5) % 16];
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const EARTH_FROM = 2; // degrees below the horizon where the card turns from the sky to the Earth
 
-// ---- Places: GPS, a ?at= link, a picked city, or a guess from the time zone ---------------------
+// ---- Places: GPS, a #at= link, a searched place, or a guess from the time zone -------------------
+// This short list only serves the guess: the place sheet searches any place online (places.js).
 const CITIES = [
 	['Brisbane', -27.47, 153.03, 'Australia/Brisbane'], ['Sydney', -33.87, 151.21, 'Australia/Sydney'],
 	['Melbourne', -37.81, 144.96, 'Australia/Melbourne'], ['Perth', -31.95, 115.86, 'Australia/Perth'],
@@ -89,6 +91,8 @@ const S = {
 	fade: 0,                      // the globe fading in once loaded
 	look: null,                   // { az, dep, fwd (scene frame), hit: {lat, lon, km, arcKm} | null }
 	ready: false, nogl: false, stream: null, started: false,
+	globe: true,                  // false: the globe hidden, for the full sky
+	target: null,                 // what Find is pointing to: { kind, key, name, v (Earth-fixed, for places on Earth) }
 };
 const src = new OrientationSource();
 const P = new THREE.Vector3(), East = new THREE.Vector3(), North = new THREE.Vector3(), South = new THREE.Vector3();
@@ -238,6 +242,7 @@ function updateCamera() {
 		}
 		const k = camera.fov / innerHeight; // degrees per pixel, so the view follows the finger
 		if (S.aimMode === 'drag') {
+			aimAnim = null;
 			S.az = ((S.az - (e.clientX - p.x) * k) % 360 + 360) % 360;
 			S.dep = Math.min(90, Math.max(-90, S.dep - (e.clientY - p.y) * k));
 		}
@@ -250,6 +255,7 @@ function updateCamera() {
 		if (S.aimMode !== 'drag' || e.target.closest('input, select')) return;
 		const k = { ArrowLeft: [-3, 0], ArrowRight: [3, 0], ArrowUp: [0, -3], ArrowDown: [0, 3] }[e.key];
 		if (!k) return;
+		aimAnim = null;
 		S.az = ((S.az + k[0]) % 360 + 360) % 360; S.dep = Math.min(90, Math.max(-90, S.dep + k[1]));
 		e.preventDefault();
 	});
@@ -363,17 +369,180 @@ for (const sh of document.querySelectorAll('dialog.sheet')) {
 $('intro').addEventListener('cancel', (e) => e.preventDefault());
 $('infoBtn').addEventListener('click', () => openSheet($('about')));
 $('placeBtn').addEventListener('click', () => openSheet($('placeSheet')));
-{
-	const sel = $('citySel');
-	sel.append(new Option('Choose…', ''));
-	for (const [name] of [...CITIES].sort((a, b) => a[0].localeCompare(b[0]))) sel.append(new Option(name, name));
-	sel.addEventListener('change', () => {
-		const c = CITIES.find((x) => x[0] === sel.value);
-		if (!c) return;
-		choosePlace({ name: c[0], lat: c[1], lon: c[2], source: 'city' });
-		closeSheet($('placeSheet'));
-	});
-	$('gpsBtn').addEventListener('click', () => { askLocation(false); closeSheet($('placeSheet')); });
+$('gpsBtn').addEventListener('click', () => { askLocation(false); closeSheet($('placeSheet')); });
+$('findBtn').addEventListener('click', () => { openSheet($('findSheet')); $('findInput').select(); });
+
+// Results for both search sheets: a button per result, with its name and a grey line under it.
+function resultList(box, items, pick) {
+	box.replaceChildren(...items.map((it) => {
+		const b = document.createElement('button');
+		b.type = 'button';
+		b.className = 'res';
+		const n = document.createElement('span'), w = document.createElement('span');
+		n.className = 'rn'; n.textContent = it.name;
+		w.className = 'rw'; w.textContent = it.sub;
+		b.append(n, w);
+		b.addEventListener('click', () => pick(it));
+		return b;
+	}));
+}
+
+// "Where are you looking from?": any town, city or address, looked up online (places.js), as on
+// weathermodels.app. Each search takes a number, so a slow answer can't replace a newer one.
+let placeSeq = 0;
+$('placeForm').addEventListener('submit', async (e) => {
+	e.preventDefault();
+	const q = $('placeInput').value.trim();
+	if (!q) return;
+	const mine = ++placeSeq, status = $('placeStatus'), box = $('placeResults');
+	box.replaceChildren();
+	status.textContent = `Searching for “${q}”…`;
+	try {
+		const list = await geocode(q);
+		if (mine !== placeSeq) return;
+		status.textContent = list.length ? '' : `No places found for “${q}”.`;
+		resultList(box, list.map((p) => ({ ...p, sub: [p.type, p.where].filter(Boolean).join(' · ') || `${p.lat.toFixed(2)}, ${p.lon.toFixed(2)}` })), (p) => {
+			choosePlace({ name: p.name.slice(0, 60), lat: p.lat, lon: p.lon, source: 'search' });
+			closeSheet($('placeSheet'));
+		});
+	} catch (err) {
+		if (mine !== placeSeq) return;
+		status.textContent = `The search didn't work (${err.message}). Check the connection and try again.`;
+	}
+});
+
+// The globe on or off. Off shows the full sky: below the horizon the dark sky beyond the far side
+// of the Earth, with its stars and names. Remembered in this browser only.
+const PREFS = 'lud-prefs-v1';
+let prefs = {};
+try { prefs = JSON.parse(localStorage.getItem(PREFS) || '{}') || {}; } catch (e) { prefs = {}; }
+function setGlobe(on) {
+	S.globe = !!on;
+	SKY.setFullSky(!S.globe);
+	const b = $('globeBtn');
+	b.setAttribute('aria-pressed', String(S.globe));
+	b.title = S.globe ? 'Hide the Earth to see the whole sky' : 'Show the glass Earth';
+	prefs.globe = S.globe;
+	try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch (e) { /* private mode: not kept */ }
+}
+$('globeBtn').addEventListener('click', () => setGlobe(!S.globe));
+setGlobe(prefs.globe !== false);
+
+// Find: the Sun, Moon and planets, named stars, constellations, countries and oceans, searched
+// here on the phone as you type. Picking one aims the view at it when dragging; with the compass
+// an arrow at the edge shows which way to turn. A ring marks it until the chip at the top clears it.
+// Places on Earth are aimed at through the Earth, so picking one turns the globe back on.
+const fold = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/^the /, '').trim();
+let findIndex = null, findHasEarth = false;
+function buildFindIndex() {
+	const items = SKY.skyItems(), seen = new Set();
+	for (const l of labels) {
+		if (l.kind === 'opp' || seen.has(l.text)) continue; // the oceans have several label points: the first
+		seen.add(l.text);
+		items.push({ kind: 'earth', key: l.text, name: l.text, sub: l.kind === 'sea' ? 'ocean' : 'country or territory', v: l.v, rank: 2 });
+	}
+	for (const it of items) { it.f = fold(it.name); it.fa = it.also ? fold(it.also) : ''; }
+	findHasEarth = labels.length > 0;
+	return items;
+}
+function findMatches(q) {
+	const f = fold(q);
+	if (!f) return [];
+	if (!findIndex || (!findHasEarth && labels.length)) findIndex = buildFindIndex();
+	const scored = [];
+	for (const it of findIndex) {
+		const sc = it.f === f || it.fa === f ? 0 : it.f.startsWith(f) ? 1 : it.f.split(/[\s-]+/).some((w) => w.startsWith(f)) ? 2 : it.f.includes(f) ? 3 : -1;
+		if (sc >= 0) scored.push([sc, it]);
+	}
+	scored.sort((a, b) => a[0] - b[0] || a[1].rank - b[1].rank || a[1].name.length - b[1].name.length);
+	return scored.slice(0, 12).map((x) => x[1]);
+}
+function showFind() {
+	const q = $('findInput').value, list = findMatches(q);
+	resultList($('findResults'), list, pickTarget);
+	$('findStatus').textContent = !q.trim() ? '' : list.length ? '' : `Nothing called “${q.trim()}” here.`;
+}
+$('findInput').addEventListener('input', showFind);
+$('findForm').addEventListener('submit', (e) => { e.preventDefault(); const list = findMatches($('findInput').value); if (list.length) pickTarget(list[0]); });
+$('targetChip').addEventListener('click', () => setTarget(null));
+
+const tDir = new THREE.Vector3(), qInv = new THREE.Quaternion();
+// The target's direction now, in the scene frame (unit), or null.
+function targetDir() {
+	const t = S.target;
+	if (!t) return null;
+	if (t.kind !== 'earth') return SKY.skyDir(t.kind, t.key, tDir);
+	tDir.copy(t.v).sub(P); // through the Earth, from here
+	if (tDir.lengthSq() < 1e-8) return null;
+	return tDir.normalize().applyQuaternion(qInv.copy(qBasis).invert());
+}
+function setTarget(t) {
+	S.target = t;
+	SKY.setMarked(t && t.kind !== 'earth' ? { kind: t.kind, key: t.key } : null);
+	$('targetChip').hidden = !t;
+	if (t) $('targetName').textContent = t.name;
+}
+function pickTarget(it) {
+	closeSheet($('findSheet'));
+	if (it.kind === 'earth' && !S.globe) setGlobe(true);
+	setTarget({ kind: it.kind, key: it.key, name: it.name, v: it.v });
+	const d = targetDir();
+	if (!d) { toast("That's where you are"); return; }
+	if (S.aimMode === 'drag') aimTowards(d);
+}
+// Drag mode: swing the view round to a direction, eased (at once with reduced motion).
+let aimAnim = null;
+function aimTowards(d) {
+	const az = (Math.atan2(d.x, -d.z) / DEG + 360) % 360, dep = -Math.asin(Math.max(-1, Math.min(1, d.y))) / DEG;
+	if (matchMedia('(prefers-reduced-motion: reduce)').matches) { S.az = az; S.dep = dep; aimAnim = null; return; }
+	const from = { az: S.az, dep: S.dep }, dAz = ((az - from.az + 540) % 360) - 180, t0 = performance.now();
+	aimAnim = (now) => {
+		const k = Math.min(1, (now - t0) / 700), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+		S.az = (from.az + dAz * e + 360) % 360;
+		S.dep = from.dep + (dep - from.dep) * e;
+		if (k >= 1) aimAnim = null;
+	};
+}
+// The ring on the target when it's on screen, or an arrow at the edge pointing the way to turn.
+const _t = new THREE.Vector3(), qCam = new THREE.Quaternion();
+function placeTarget() {
+	const mk = $('targetMark'), ar = $('targetArrow'), d = targetDir();
+	if (!d) { mk.hidden = ar.hidden = true; return; }
+	_t.copy(d).multiplyScalar(SKY.R * 0.9).project(SKY.camera);
+	const behind = _t.z > 1, x = _t.x, y = _t.y;
+	if (!behind && Math.abs(x) < 0.92 && Math.abs(y) < 0.88) {
+		const px = (x + 1) / 2 * innerWidth, py = (1 - y) / 2 * innerHeight;
+		mk.hidden = false; ar.hidden = true;
+		mk.style.transform = `translate(${px.toFixed(1)}px, ${py.toFixed(1)}px)`;
+		SKY.claim(px, py, 44, 44);
+		return;
+	}
+	// Off screen: the way to turn is the target's direction in the camera's own frame (x right,
+	// y up), not its projected point, which far off-axis is stretched and behind is mirrored. The
+	// arrow goes where a line from the middle of the screen that way leaves a box inset from the
+	// edges and the top bar, stopping short of the card if it would end on it, so its angle holds.
+	const c = _t.copy(d).applyQuaternion(qCam.copy(SKY.camera.quaternion).invert());
+	let ux = c.x, uy = -c.y;
+	const n = Math.hypot(ux, uy);
+	if (n < 1e-6) { ux = 0; uy = 1; } else { ux /= n; uy /= n; } // straight behind: point down
+	const cx = innerWidth / 2, cy = innerHeight / 2;
+	const hud = $('hudTop').getBoundingClientRect(), card = $('card').getBoundingClientRect();
+	const top = Math.min(cy - 20, hud.bottom + 30), bottom = innerHeight - 40;
+	let t = Infinity;
+	if (ux > 0) t = Math.min(t, (innerWidth - 56 - cx) / ux);
+	if (ux < 0) t = Math.min(t, (56 - cx) / ux);
+	if (uy > 0) t = Math.min(t, (bottom - cy) / uy);
+	if (uy < 0) t = Math.min(t, (top - cy) / uy);
+	let px = cx + ux * t, py = cy + uy * t;
+	if (uy > 0 && py > card.top - 34 && px > card.left - 50 && px < card.right + 50 && card.top - 34 > cy + 20) {
+		t = (card.top - 34 - cy) / uy;
+		px = cx + ux * t; py = cy + uy * t;
+	}
+	mk.hidden = true; ar.hidden = false;
+	ar.style.transform = `translate(${px.toFixed(0)}px, ${py.toFixed(0)}px)`;
+	$('targetArrowHead').style.transform = `rotate(${(Math.atan2(uy, ux) / DEG + 90).toFixed(1)}deg)`;
+	$('targetArrowName').textContent = S.target.name;
+	SKY.claim(px, py, 90, 60);
 }
 
 // ---- The world: texture, place lookup, labels -------------------------------------------------------------
@@ -482,7 +651,7 @@ let nEarth = 0;
 function placeEarthLabels() {
 	const w = innerWidth, h = innerHeight, focal = h / (2 * Math.tan(camera.fov * DEG / 2));
 	nEarth = 0;
-	const list = !labels.length ? [] : anti ? [anti, ...labels] : labels;
+	const list = !labels.length || !S.globe ? [] : anti ? [anti, ...labels] : labels;
 	let reticleTaken = false;
 	for (const l of list) {
 		if (nEarth >= 32) break;
@@ -494,17 +663,19 @@ function placeEarthLabels() {
 		const px = l.kind === 'land' ? l.size / d * focal : 999;
 		if (px < 22) continue;
 		tmp.copy(l.v).project(camera);
-		const x = (tmp.x + 1) / 2 * w, y = (1 - tmp.y) / 2 * h;
+		// What Find picked has its name dropped below the ring drawn round it.
+		const x = (tmp.x + 1) / 2 * w, y = (1 - tmp.y) / 2 * h + (S.target && S.target.kind === 'earth' && S.target.key === l.text ? 36 : 0);
 		const big = l.kind === 'land' && px > 160, opp = l.kind === 'opp';
-		const fs = l.kind === 'sea' ? 11 : big ? 15 : 13, bw = l.text.length * fs * 0.6 + (opp ? 24 : 10), bh = fs + 8;
-		// Names are centred on their point; the opposite-side marker's ring sits on it instead.
-		const left = opp ? x - 9 : x - bw / 2;
+		const fs = l.kind === 'sea' ? 11 : big ? 15 : 13, bw = l.text.length * fs * 0.6 + (opp ? 34 : 10), bh = fs + 8;
+		// Names are centred on their point; the opposite-side marker's ring is centred on it instead,
+		// with the words to its right, clear of the reticle (tte.css: a 14 px ring in a 16 px line).
+		const left = opp ? x - 7 : x - bw / 2;
 		if (left < 4 || left + bw > w - 4 || y - bh / 2 < 0 || y + bh / 2 > h) continue;
 		if (!SKY.claim(left + bw / 2, y, bw, bh)) continue;
 		const p = labelEl(nEarth++), cls = 'pl' + (l.kind === 'sea' ? ' sea' : opp ? ' opp' : big ? ' big' : '');
 		if (p.text !== l.text) { p.el.textContent = l.text; p.text = l.text; }
 		if (p.cls !== cls) { p.el.className = cls; p.cls = cls; }
-		p.el.style.transform = `translate(${(left + (opp ? 0 : 5)).toFixed(1)}px, ${(y - bh / 2).toFixed(1)}px)`;
+		p.el.style.transform = opp ? `translate(${left.toFixed(1)}px, ${(y - 8).toFixed(1)}px)` : `translate(${(left + 5).toFixed(1)}px, ${(y - bh / 2).toFixed(1)}px)`;
 		p.el.style.opacity = String(Math.min(1, S.fade * 1.2));
 		p.el.hidden = false;
 	}
@@ -515,6 +686,7 @@ function placeLabels() {
 	SKY.resetOcc();
 	SKY.claimRect($('hudTop').getBoundingClientRect());
 	SKY.claimRect($('card').getBoundingClientRect());
+	placeTarget();
 	SKY.placeLabels(placeEarthLabels);
 }
 
@@ -531,7 +703,7 @@ function readouts() {
 	const showCal = src.calibrating || (src.accuracy !== null && src.accuracy > 25 && src.status === 'ok');
 	cal.hidden = !showCal;
 	if (showCal) cal.textContent = src.calibrating ? 'Settling the compass: hold the phone flat over the floor for a moment.' : 'The compass is unsure here: move the phone in a figure of eight, away from metal.';
-	const card = $('card'), earth = !!L.hit && L.dep >= EARTH_FROM;
+	const card = $('card'), earth = S.globe && !!L.hit && L.dep >= EARTH_FROM;
 	card.classList.toggle('sky', !earth);
 	if (!earth) {
 		const d = SKY.describe(L.fwd);
@@ -545,9 +717,14 @@ function readouts() {
 	if (!S.ready) { $('cKicker').textContent = 'One moment'; $('cName').textContent = 'Loading the world…'; $('cDetail').textContent = ''; return; }
 	const where = G.whereIs(L.hit.lat, L.hit.lon), deep = E.deepestPoint(L.dep);
 	const through = deep > 5150 ? 'through both cores' : deep > 2891 ? 'through the outer core' : deep > 660 ? 'through the lower mantle' : deep > 35 ? 'through the upper mantle' : 'through the crust';
-	// A Sun, Moon or planet in the same direction, out beyond the far side.
+	// A Sun, Moon or planet in the same direction, out beyond the far side, or what Find picked.
 	const b = SKY.bodyAt(L.fwd);
-	$('cKicker').textContent = (L.dep > 88 ? 'Straight down, the other side of the world' : 'Straight through the Earth') + (b ? ` · ${SKY.bodyTitle(b).replace(/^The /, 'the ')} beyond` : '');
+	let beyond = b ? SKY.bodyTitle(b).replace(/^The /, 'the ') : '';
+	if (!beyond && S.target && S.target.kind !== 'earth') {
+		const d = targetDir();
+		if (d && d.angleTo(L.fwd) < 6 * camera.fov / 67 * DEG) beyond = S.target.name;
+	}
+	$('cKicker').textContent = (L.dep > 88 ? 'Straight down, the other side of the world' : 'Straight through the Earth') + (beyond ? ` · ${beyond} beyond` : '');
 	$('cName').textContent = cap(where.name);
 	$('cDetail').textContent = `${nf(L.hit.km)} km away in a straight line, ${through} (${nf(L.hit.arcKm)} km round the surface)`;
 }
@@ -563,6 +740,7 @@ function frame(now) {
 		lastSky = now; skyPlace = S.place;
 		SKY.setTime(dateToDays(new Date()), S.place.lat, S.place.lon);
 	}
+	if (aimAnim) aimAnim(now);
 	updateCamera();
 	S.fade += (1 - S.fade) * Math.min(1, dt * 4);
 	if (renderer) {
@@ -571,8 +749,10 @@ function frame(now) {
 		uniforms.opacity.value = S.stream ? 0.8 : 0.95;
 		renderer.clear();
 		renderer.render(SKY.scene, SKY.camera);
-		renderer.clearDepth();
-		renderer.render(scene, camera);
+		if (S.globe) {
+			renderer.clearDepth();
+			renderer.render(scene, camera);
+		}
 	}
 	placeLabels();
 	if (now - lastDom > 100) { lastDom = now; readouts(); }
@@ -597,4 +777,9 @@ window.__TTE = {
 	get ready() { return S.ready; },
 	visibleLabels() { return pool.filter((p) => !p.el.hidden).map((p) => p.text); },
 	skyLabels() { return [...labelBox.children].filter((el) => !el.hidden && !el.classList.contains('pl')).map((el) => el.textContent); },
+	setGlobe,
+	find: (q) => findMatches(q).map((it) => ({ name: it.name, sub: it.sub, kind: it.kind })),
+	get aiming() { return !!aimAnim; },
+	targetInCamera() { const d = targetDir(); return d ? d.clone().applyQuaternion(SKY.camera.quaternion.clone().invert()).toArray() : null; },
+	targetUi() { return { chip: !$('targetChip').hidden, mark: !$('targetMark').hidden, arrow: !$('targetArrow').hidden, name: S.target && S.target.name }; },
 };

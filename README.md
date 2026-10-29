@@ -6,7 +6,7 @@ Point your phone up to see the sky above you, right now: the Sun, the Moon, the 
 
 A card names whatever is in the middle of the view: a planet, star or constellation above the horizon; below it, the country or ocean on the far side, how far away it is, and which of the Earth's layers the line of sight passes through. Without a compass (on a computer, say) you drag to look around.
 
-Just for fun. Everything runs in the browser; the location and camera picture never leave the phone.
+Just for fun. Everything runs in the browser; the location and camera picture never leave the phone. Only a place name you type into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder.
 
 ## How it's built
 
@@ -14,6 +14,7 @@ Static files, no build step, no backend:
 
 - `index.html`, `tte.css`, `tte.js`: the page, the glass Earth (drawn from the inside) and the controls.
 - `skyview.js`: the sky, drawn first, from a camera with the same attitude.
+- `places.js`: the "looking from" place search (Photon, then Open-Meteo's place finder), as on [weathermodels.app](https://weathermodels.app/).
 - `earth.js`: the Preliminary Reference Earth Model (layers, depths). `geo.js`: what lies at a latitude and longitude. `texture.js`: the coastline and border overlay.
 - `orientation.js`: the phone's attitude, the iPhone compass calibration and the World Magnetic Model 2025.
 - Copied from [orrery.live](https://orrery.live/) (also MIT): `sky/astro.js`, `sky/vsop87.js`, `sky/constellation-names.js`, `guide-orbits.js`, `stars.js`, `constellations.js`.

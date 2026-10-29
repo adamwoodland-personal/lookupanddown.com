@@ -48,15 +48,20 @@
 	<canvas id="view" aria-hidden="true"></canvas>
 	<div id="labels" aria-hidden="true"></div>
 	<div id="reticle" aria-hidden="true"></div>
+	<div id="targetMark" aria-hidden="true" hidden></div>
+	<div id="targetArrow" aria-hidden="true" hidden><span id="targetArrowHead">▲</span><span id="targetArrowName"></span></div>
 </div>
 
 <header id="hudTop">
 	<button id="placeBtn" class="chip" type="button" aria-haspopup="dialog"><span class="lbl">From</span> <span id="placeName">…</span></button>
 	<div class="right">
+		<button id="findBtn" class="icon" type="button" aria-haspopup="dialog" title="Find a planet, star, constellation or country">Find</button>
+		<button id="globeBtn" class="icon" type="button" aria-pressed="true" title="Hide the Earth to see the whole sky">Earth</button>
 		<button id="camBtn" class="icon" type="button" aria-pressed="false" title="Camera on or off">Cam</button>
 		<button id="infoBtn" class="icon" type="button" aria-haspopup="dialog" title="How it works">ⓘ</button>
 	</div>
 	<p id="aimText">…</p>
+	<button id="targetChip" class="chip target" type="button" hidden title="Stop showing the way">Showing <span id="targetName"></span> <span aria-hidden="true">✕</span><span class="sr">(clear)</span></button>
 	<p id="calib" hidden></p>
 </header>
 
@@ -75,7 +80,7 @@
 		<p id="introHint" class="hint">On an iPhone, hold the phone flat over the floor for a moment first, so the compass can settle.</p>
 		<button id="startBtn" class="go" type="button" autofocus>Start looking</button>
 		<button id="startNoCam" class="plain" type="button">Start without the camera</button>
-		<p class="small">Your GPS position and the camera picture stay on your phone: nothing is sent anywhere.</p>
+		<p class="small">Your GPS position and the camera picture stay on your phone. Only place names you search for are looked up online.</p>
 	</div>
 </dialog>
 
@@ -84,8 +89,30 @@
 		<button class="close" type="button" aria-label="Close">✕</button>
 		<h2 id="placeTitle">Where are you looking from?</h2>
 		<button id="gpsBtn" class="go" type="button">Use my location</button>
-		<label for="citySel">Or pick a city</label>
-		<select id="citySel"></select>
+		<form id="placeForm" role="search">
+			<label for="placeInput">Or search for a place</label>
+			<div class="srow">
+				<input id="placeInput" type="search" placeholder="Town, city or address" autocomplete="off" enterkeyhint="search" maxlength="120">
+				<button type="submit" class="sbtn">Search</button>
+			</div>
+		</form>
+		<p id="placeStatus" class="small" role="status" aria-live="polite"></p>
+		<div id="placeResults" class="results"></div>
+		<p class="small">Searches are looked up by Photon (OpenStreetMap data, run by komoot), or Open-Meteo's place finder if Photon fails: only the words you type are sent. Your GPS position never leaves your phone.</p>
+	</div>
+</dialog>
+
+<dialog id="findSheet" class="sheet" aria-labelledby="findTitle">
+	<div class="inner">
+		<button class="close" type="button" aria-label="Close">✕</button>
+		<h2 id="findTitle">Find something</h2>
+		<form id="findForm" role="search">
+			<label for="findInput">A planet, star, constellation, country or ocean</label>
+			<input id="findInput" type="search" placeholder="Jupiter, Sirius, Orion, Brazil…" autocomplete="off" enterkeyhint="go" maxlength="60" autofocus>
+		</form>
+		<p id="findStatus" class="small" role="status" aria-live="polite"></p>
+		<div id="findResults" class="results"></div>
+		<p class="small">Pick one and the view turns to it, or, with the compass, an arrow shows which way to point. Countries are found straight through the Earth.</p>
 	</div>
 </dialog>
 
@@ -97,12 +124,14 @@
 		<p>Below the horizon, imagine the Earth were made of glass. Look down at your feet and you would see straight through it to the far side of the world, from underneath. The page draws the countries and oceans in that direction, through the planet. Look straight down and you see the exact opposite side of the world; tip the phone towards the horizon and the view sweeps closer to home.</p>
 		<h3>The sky</h3>
 		<p>The sky is the same as on <a href="https://orrery.live/night-sky/">orrery.live's night sky</a>, worked out on your phone for this moment: by day it is blue and the stars are hidden, as they really are. Things below the horizon, such as the Sun at night, keep their names, faint, where they sit beyond the far side of the Earth.</p>
+		<h3>The buttons</h3>
+		<p><b>Find</b> searches the Sun, the Moon, the planets, the named stars, the constellations, the countries and the oceans; pick one and the view turns to it, or an arrow shows which way to point the phone. <b>Earth</b> hides the glass Earth to show the whole sky, including the half below the horizon, as a dark sky with its names. <b>Cam</b> shows the camera picture behind the view. Tap the place at the top left to look from somewhere else.</p>
 		<h3>Why it looks back to front</h3>
 		<p>You are seeing the far side from inside the Earth, so the map is the mirror image of the one you know, just as a sign reads backwards from behind a window. The names are written the right way round so you can read them.</p>
 		<h3>The glow</h3>
 		<p>The blue haze towards the edge of the view is the atmosphere, seen at a slant where your line of sight skims the far surface. Look steeply down and you will see faint orange rings: the Earth's liquid outer core and solid inner core, which your line of sight passes through on the way.</p>
 		<h3>Your privacy</h3>
-		<p>Your GPS position and the camera picture are used only on your phone and never leave it. A link that starts somewhere else carries that place after a #, which browsers keep to themselves rather than sending to the website.</p>
+		<p>Your GPS position and the camera picture are used only on your phone and never leave it. Find searches only on your phone. When you search for a place to look from, the words you type are sent to Photon (OpenStreetMap data, run by komoot), or to Open-Meteo's place finder if Photon fails, and nothing else. A link that starts somewhere else carries that place after a #, which browsers keep to themselves rather than sending to the website.</p>
 		<h3>How it's worked out</h3>
 		<p>The satellite picture is NASA's Blue Marble (public domain), and places come from Natural Earth's country outlines, the same as on <a href="https://whatsacross.com/">What's Across</a>. Your phone's compass is corrected from magnetic to true north with the World Magnetic Model 2025. The Earth is treated as a perfect sphere, and phone compasses are only good to a few degrees, so a far-away place can be a few hundred km off. The layers the line of sight passes through come from the Preliminary Reference Earth Model (Dziewonski and Anderson, 1981).</p>
 		<p>The planets come from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons. Star data: <a href="https://codeberg.org/astronexus/hyg">HYG database</a> (CC BY-SA 4.0). Constellation figures: <a href="https://github.com/ofrohn/d3-celestial">d3-celestial</a> (BSD-3). Constellation boundaries: IAU (Delporte 1930) via Roman (1987), CDS VI/42. Milky Way: <a href="https://svs.gsfc.nasa.gov/4851">NASA/Goddard Space Flight Center Scientific Visualization Studio</a>, Deep Star Maps 2020; Gaia DR2: ESA/Gaia/DPAC.</p>
