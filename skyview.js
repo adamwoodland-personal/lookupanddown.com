@@ -399,12 +399,9 @@ export function setTime(t, lat, lon) {
 		// Shown at the refracted position (it matters only near the horizon).
 		b.pos.copy(azAltToScene(b.az, b.altApp, 1));
 	}
-	const sunAlt = state.sunAlt = bodyObjs.Sun.alt;
+	state.sunAlt = bodyObjs.Sun.alt;
 	dome.material.uniforms.uSun.value.copy(bodyObjs.Sun.pos);
-	dome.material.uniforms.uSunAlt.value = sunAlt;
-	applyLimits();
-	lineMat.opacity = 0.42 * clamp((-sunAlt + 1) / 11, 0.1, 1);
-	milkyMat.opacity = MILKY_MAX * clamp((-sunAlt - 12) / 6, 0, 1);
+	applyLight();
 	state.moonPhase = A.moonPhase(t);
 	drawMoon(state.moonPhase.fraction);
 	return true;
@@ -415,8 +412,24 @@ export function setTime(t, lat, lon) {
 let fullSky = false;
 const DARK = 5.8;
 export function setFullSky(on) { fullSky = !!on; applyLimits(); }
+// Night mode: the sky above the horizon is lit as if the Sun were well below it (fully dark), so
+// by day the stars, the constellations and the Milky Way show and the screen is far less bright.
+// Only the lighting changes: every position, the Sun included, stays where it really is, and the
+// card still says when something is really in daylight (describe()).
+let night = false;
+const NIGHT_ALT = -24;
+export function setNight(on) { night = !!on; applyLight(); }
+export const lightState = () => ({ night, alt: lightAlt(), milky: milkyMat.opacity, limit: starMat.uniforms.uLimit.value, lines: lineMat.opacity }); // for the tests
+const lightAlt = () => (night ? Math.min(state.sunAlt, NIGHT_ALT) : state.sunAlt); // the Sun altitude the sky is lit by
+function applyLight() {
+	const la = lightAlt();
+	dome.material.uniforms.uSunAlt.value = la;
+	lineMat.opacity = 0.42 * clamp((-la + 1) / 11, 0.1, 1);
+	milkyMat.opacity = MILKY_MAX * clamp((-la - 12) / 6, 0, 1);
+	applyLimits();
+}
 function applyLimits() {
-	starMat.uniforms.uLimit.value = limitingMag(state.sunAlt);
+	starMat.uniforms.uLimit.value = limitingMag(lightAlt());
 	starMat.uniforms.uLimitBelow.value = fullSky ? DARK : starMat.uniforms.uLimit.value;
 	starMat.uniforms.uBelow.value = fullSky ? 0.9 : 0.35;
 }
@@ -429,7 +442,9 @@ function limitingMag(sa) {
 	return 5.8;
 }
 const below = (alt) => fullSky && alt < -0.5; // in the full sky's dark lower half
-function bodyVisibleNow(b) { return b.mag < (below(b.alt) ? DARK : limitingMag(state.sunAlt)) + (b.name === 'Moon' || b.name === 'Sun' ? 99 : 0); }
+function bodyVisibleNow(b) { return b.mag < (below(b.alt) ? DARK : limitingMag(lightAlt())) + (b.name === 'Moon' || b.name === 'Sun' ? 99 : 0); }
+// The same with the real sky's light, for the card's "hidden by daylight" (Night mode or not).
+function bodyVisibleReally(b) { return b.mag < (below(b.alt) ? DARK : limitingMag(state.sunAlt)) + (b.name === 'Moon' || b.name === 'Sun' ? 99 : 0); }
 
 // ---- Per frame -------------------------------------------------------------------------------------
 // The camera: at the origin, with the attitude the globe's camera also uses, and the same view.
@@ -491,7 +506,7 @@ export function placeLabels(between) {
 	}
 	for (const k of COMPASS) placeFree(k.el, project(azAltToScene(k.az, 0.6, R * 0.95)), 0, -9, k.w, 16, true);
 	if (between) between();
-	const dark = state.sunAlt < -4;
+	const dark = lightAlt() < -4;
 	if (!dark && !fullSky) {
 		for (const st of starLabels) if (!st.el.hidden) st.el.hidden = true;
 		for (const c of constLabels) c.el.hidden = true;
@@ -548,13 +563,15 @@ export const bodyTitle = (b) => b.name === 'Moon' ? 'The Moon' : b.name === 'Sun
 export function describe(fwd) {
 	const day = state.sunAlt > -4;
 	const lit = (alt) => day && !below(alt); // in daylight, unless in the full sky's dark lower half
+	// In Night mode the thing is drawn, so say it's really daytime rather than "hidden".
+	const DAYLIT = night ? ' · in daylight now' : ' · hidden by daylight';
 	const b = bodyAt(fwd);
 	if (b) {
 		const ph = state.moonPhase;
 		const kicker = b.name === 'Sun' ? 'Our star' : b.name === 'Moon' ? `${ph.name}, ${Math.round(ph.fraction * 100)}% lit · in ${conOf(b.pos)}` : `Planet · in ${conOf(b.pos)}`;
 		const planet = b.name !== 'Sun' && b.name !== 'Moon';
 		const faint = planet && b.mag > 5.5 ? ` · ${b.mag > 6.5 ? 'telescope' : 'binoculars'} only`
-			: planet && lit(b.alt) && !bodyVisibleNow(b) ? ' · hidden by daylight' : '';
+			: planet && lit(b.alt) && !bodyVisibleReally(b) ? DAYLIT : '';
 		const sun = b.name === 'Sun' && b.alt > 0 ? ' · never look straight at it' : '';
 		const mag = b.name === 'Sun' ? '' : ` · magnitude ${b.mag.toFixed(1)}`;
 		return { kind: 'body', key: b.name, kicker, name: bodyTitle(b), color: BODY_COLOR[b.name],
@@ -571,11 +588,11 @@ export function describe(fwd) {
 	const aa = sceneToAzAlt(fwd);
 	if (star) {
 		const w = sceneToAzAlt(_tmp.copy(star.v).applyMatrix4(eqToScene));
-		const hidden = lit(w.alt) && star.mag > limitingMag(state.sunAlt) ? ' · hidden by daylight' : '';
+		const hidden = lit(w.alt) && star.mag > limitingMag(state.sunAlt) ? DAYLIT : '';
 		return { kind: 'star', kicker: `Star · in ${constellationAt(star.ra, star.dec)}`, name: star.name || star.desig, color: '#cfe0ff',
 			detail: `${cap(where(w.az, w.alt + A.refraction(w.alt)))} · magnitude ${star.mag.toFixed(1)}${hidden}` };
 	}
-	return { kind: 'const', kicker: lit(aa.alt) ? 'Constellation · hidden by daylight' : 'Constellation', name: conOf(fwd), color: '#b9cbf2',
+	return { kind: 'const', kicker: 'Constellation' + (lit(aa.alt) ? DAYLIT : ''), name: conOf(fwd), color: '#b9cbf2',
 		detail: cap(where(aa.az, aa.alt)) };
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);

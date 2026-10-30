@@ -4,6 +4,8 @@
 
 Point your phone up to see the sky above you, right now: the Sun, the Moon, the planets, the stars, the constellations and the Milky Way. Point it down and the Earth turns to glass, so you see straight through it to the other side of the world, from underneath.
 
+Night mode (the ☾ button) draws the night sky even in the daytime, so the stars, the constellations and the Milky Way show where they really are; with the camera on, the camera picture is dimmed so they show over it.
+
 A card names whatever is in the middle of the view: a planet, star or constellation above the horizon; below it, the country or ocean on the far side, how far away it is, and which of the Earth's layers the line of sight passes through. Without a compass (on a computer, say) you drag to look around.
 
 Just for fun. Everything runs in the browser; the location and camera picture never leave the phone. Only a place name you type into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder.

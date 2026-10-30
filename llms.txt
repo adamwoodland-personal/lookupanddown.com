@@ -6,7 +6,7 @@ How it works: the phone's compass and motion sensors give the direction it is po
 
 Privacy: everything is worked out on the phone. The location and the camera picture never leave it; there are no cookies or analytics. Only a place name typed into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder.
 
-Features: a Find search for the Sun, Moon, planets, named stars, constellations, countries and oceans (the view turns to the pick, or an arrow shows which way to point the phone), and an Earth button that hides the globe to show the whole sky, including the half below the horizon.
+Features: a Find search for the Sun, Moon, planets, named stars, constellations, countries and oceans (the view turns to the pick, or an arrow shows which way to point the phone), an Earth button that hides the globe to show the whole sky, including the half below the horizon, and a Night mode that draws the night sky even by day (stars, constellations and the Milky Way where they really are; with the camera on, the picture is dimmed so they show over it).
 
 Install: an installable app (PWA); once opened it works offline, apart from the place search.
 

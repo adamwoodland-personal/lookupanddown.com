@@ -475,15 +475,20 @@ $('placeForm').addEventListener('submit', async (e) => {
 	}
 });
 
-// The globe on or off. Off shows the full sky: below the horizon the dark sky beyond the far side
-// of the Earth, with its stars and names. Remembered in this browser only.
+// The globe on or off (off shows the full sky: below the horizon the dark sky beyond the far side
+// of the Earth, with its stars and names), and Night mode. Remembered in this browser only.
 const PREFS = 'lud-prefs-v1';
-// Anything else stored under the key (true, 1, "text", [], a non-boolean globe) is ignored.
+// Each field is kept only if it is a boolean; anything else stored under the key (true, 1, "text",
+// [], a non-boolean field) is ignored.
 let prefs = {};
 try {
 	const raw = JSON.parse(localStorage.getItem(PREFS) || '{}');
-	if (raw && typeof raw === 'object' && !Array.isArray(raw) && typeof raw.globe === 'boolean') prefs = { globe: raw.globe };
+	if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+		if (typeof raw.globe === 'boolean') prefs.globe = raw.globe;
+		if (typeof raw.night === 'boolean') prefs.night = raw.night;
+	}
 } catch (e) { prefs = {}; }
+function savePrefs() { try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch (e) { /* private mode: not kept */ } }
 function setGlobe(on) {
 	S.globe = !!on;
 	SKY.setFullSky(!S.globe);
@@ -491,10 +496,29 @@ function setGlobe(on) {
 	b.setAttribute('aria-pressed', String(S.globe));
 	b.title = S.globe ? 'Hide the Earth to see the whole sky' : 'Show the glass Earth';
 	prefs.globe = S.globe;
-	try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch (e) { /* private mode: not kept */ }
+	savePrefs();
 }
 $('globeBtn').addEventListener('click', () => setGlobe(!S.globe));
 setGlobe(prefs.globe !== false);
+// Night mode: the sky is drawn as at night whatever the time, so by day the stars, constellations
+// and Milky Way show and the screen is much darker. With the camera on, the camera picture is
+// dimmed (body.night #cam.on in tte.css) so the stars still show over it; nothing moves, so the
+// view still lines up with the real sky.
+function setNight(on) {
+	S.night = !!on;
+	SKY.setNight(S.night);
+	document.body.classList.toggle('night', S.night);
+	const b = $('nightBtn');
+	b.setAttribute('aria-pressed', String(S.night));
+	b.title = S.night ? 'Night mode is on: tap to show the sky as it really is now' : 'Night mode: show the night sky, even by day';
+	prefs.night = S.night;
+	savePrefs();
+}
+$('nightBtn').addEventListener('click', () => {
+	setNight(!S.night);
+	if (S.night && SKY.state.sunAlt > -4) toast('Night mode: the sky is drawn as at night. The stars are really hidden by daylight just now');
+});
+setNight(prefs.night === true);
 
 // Find: the Sun, Moon and planets, named stars, constellations, countries and oceans, searched
 // here on the phone as you type. Picking one aims the view at it when dragging; with the compass
@@ -860,6 +884,7 @@ window.__TTE = {
 	S, src, SKY,
 	setAim(az, dep) { S.aimMode = 'drag'; S.az = az; S.dep = dep; },
 	setPlace,
+	setNight,
 	placeFromLink,
 	startCamera, stopCamera,
 	get camPending() { return camPending; },

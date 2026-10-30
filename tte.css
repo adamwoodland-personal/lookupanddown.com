@@ -20,6 +20,9 @@ a { color: var(--cyan); }
 #stage { position: fixed; inset: 0; }
 #cam { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.4s; }
 #cam.on { opacity: 1; }
+/* Night mode: the camera picture at a third of its brightness over the dark backdrop, so the stars
+   (drawn additively) still show over a daytime sky. Opacity only: nothing moves, so AR lines up. */
+body.night #cam.on { opacity: 0.32; }
 #view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
 #labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .pl {
@@ -83,6 +86,15 @@ a { color: var(--cyan); }
 .chip .lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
 .icon { min-width: 40px; padding: 6px 10px; font-family: var(--mono); font-size: 13px; }
 .icon[aria-pressed="true"] { border-color: var(--amber); color: var(--amber); box-shadow: 0 0 10px rgba(255, 181, 71, 0.35); }
+.icon.moon { font-family: var(--sans); font-size: 17px; line-height: 1; padding: 5px 10px 6px; }
+/* Narrow phones: five buttons and the place. "From" is hidden from sight but still read out, and
+   the buttons are a little tighter, so the place name keeps its room. */
+@media (max-width: 440px) {
+	#placeBtn .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+	#hudTop .right { gap: 4px; }
+	.icon { min-width: 34px; padding: 6px 8px; }
+	.icon.moon { padding: 5px 8px 6px; }
+}
 #placeBtn { justify-self: start; }
 #modeBtn { flex: none; font-size: 13px; padding: 4px 12px; }
 #targetChip { grid-column: 1 / -1; justify-self: start; border-color: rgba(255, 181, 71, 0.6); color: #ffe3b5; font-size: 13px; padding: 4px 12px; }
