@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Look Up and Down: the sky above you and the world beneath your feet</title>
-<meta name="description" content="Point your phone up to see the planets, stars and constellations above you, or down to see straight through the Earth to the other side of the world, as if it were glass. Free, in the browser.">
+<title>Look Up and Down: night sky above, the other side of the world below</title>
+<meta name="description" content="Point your phone up for the planets and stars above you, or down to see straight through the Earth to the other side of the world. Free, in the browser.">
 <link rel="canonical" href="https://lookupanddown.com/">
 <meta name="referrer" content="no-referrer">
 <meta property="og:type" content="website">
@@ -28,17 +28,124 @@
 <script type="module" src="tte.js"></script>
 <script type="application/ld+json">
 {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "Look Up and Down",
-  "url": "https://lookupanddown.com/",
-  "description": "Point your phone up to see the planets, stars and constellations above you, or down to see straight through the Earth to the other side of the world, as if it were glass. Free, in the browser.",
-  "applicationCategory": "EducationalApplication",
-  "operatingSystem": "Any (a phone with a compass for pointing; drag to look on a computer)",
-  "browserRequirements": "Requires JavaScript and WebGL",
-  "isAccessibleForFree": true,
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "author": { "@type": "Person", "name": "Adam Woodland", "url": "https://adamwoodland.com/" }
+ "@context": "https://schema.org",
+ "@graph": [
+  {
+   "@type": "WebSite",
+   "@id": "https://lookupanddown.com/#website",
+   "name": "Look Up and Down",
+   "url": "https://lookupanddown.com/",
+   "inLanguage": "en",
+   "publisher": {
+    "@id": "https://adamwoodland.com/#person"
+   }
+  },
+  {
+   "@type": "WebApplication",
+   "@id": "https://lookupanddown.com/#app",
+   "name": "Look Up and Down",
+   "url": "https://lookupanddown.com/",
+   "description": "Point your phone up for the night sky as it is now, with the planets, stars, constellations and the Milky Way named, or down to see straight through the Earth, as if it were glass, to the other side of the world, with the countries and oceans named and the distance through the Earth.",
+   "applicationCategory": "EducationalApplication",
+   "operatingSystem": "Any (a phone with a compass for pointing; drag to look on a computer)",
+   "browserRequirements": "Requires JavaScript and WebGL",
+   "inLanguage": "en",
+   "isAccessibleForFree": true,
+   "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+   },
+   "image": "https://lookupanddown.com/og-image.png",
+   "screenshot": "https://lookupanddown.com/og-image.png",
+   "featureList": [
+    "The sky for your place and time: the Sun, the Moon and its phase, the planets, named stars, constellations and the Milky Way",
+    "See through the Earth to the other side of the world, with countries and oceans named",
+    "The exact opposite side of the world (the antipode), straight down",
+    "Distance through the Earth and the layers on the way: crust, mantle, outer and inner core",
+    "Find the Sun, Moon, planets, stars, constellations, countries and oceans",
+    "Hide the Earth to see the whole sky, including the half below the horizon",
+    "Phone compass and camera, or drag to look on a computer"
+   ],
+   "isPartOf": {
+    "@id": "https://lookupanddown.com/#website"
+   },
+   "author": {
+    "@id": "https://adamwoodland.com/#person"
+   }
+  },
+  {
+   "@type": "Person",
+   "@id": "https://adamwoodland.com/#person",
+   "name": "Adam Woodland",
+   "url": "https://adamwoodland.com/"
+  }
+ ]
+}
+</script>
+<!-- Keep FAQPage word for word the same as the Questions in the About sheet (page-test.js checks). -->
+<script type="application/ld+json" id="faqLd">
+{
+ "@context": "https://schema.org",
+ "@type": "FAQPage",
+ "mainEntity": [
+  {
+   "@type": "Question",
+   "name": "What is on the other side of the world from me?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Point your phone straight down: the place in the middle of the view is the exact opposite side of the world from where you are, called the antipode. For most places it is sea. From Brisbane it is the Atlantic Ocean, about 880 km west of the Canary Islands; from London it is the Pacific, about 220 km from New Zealand's Antipodes Islands; from Madrid it is New Zealand itself."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "What planets can I see tonight?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Point your phone up. The Sun, the Moon and the planets are shown and named where they are in your sky right now, with the brighter stars, the constellations and the Milky Way. By day the sky is blue and the stars are hidden, as they really are. For tonight's planets with rising and setting times, see orrery.live's night sky."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "How far is it through the Earth?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Straight down to the opposite side is 12,742 km, the width of the Earth, through the crust, the mantle, the liquid outer core and the solid inner core. Wherever you point, the card gives the distance in a straight line, the distance round the surface, and the deepest layer the line passes through."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Why does the map look back to front?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "You are looking at the far side of the Earth from inside it, so the map is the mirror image of the one you know, just as a sign reads backwards from behind a window. The names are written the right way round so you can read them."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Can I find a planet, a star or a country?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Yes. Tap Find and start typing: the Sun, the Moon, the planets, the named stars, the constellations, the countries and the oceans are all there. Pick one and the view turns to it, or, with the compass, an arrow shows which way to point your phone. Countries are found straight through the Earth."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Does it work on iPhone, Android and computers?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Yes, in Safari, Chrome, Firefox or Edge. On a phone, tap Start and allow motion and location when asked; on an iPhone, hold the phone flat over the floor for a moment so the compass can settle. On a computer, or without a compass, drag to look around and scroll or pinch to zoom."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Does it send my location anywhere?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the \"looking from\" search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder."
+   }
+  }
+ ]
 }
 </script>
 </head>
@@ -139,6 +246,24 @@
 		<h3>How it's worked out</h3>
 		<p>The satellite picture is NASA's Blue Marble (public domain), and places come from Natural Earth's country outlines, the same as on <a href="https://whatsacross.com/">What's Across</a>. Your phone's compass is corrected from magnetic to true north with the World Magnetic Model 2025. The Earth is treated as a perfect sphere, and phone compasses are only good to a few degrees, so a far-away place can be a few hundred km off. The layers the line of sight passes through come from the Preliminary Reference Earth Model (Dziewonski and Anderson, 1981).</p>
 		<p>The planets come from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons. Star data: <a href="https://codeberg.org/astronexus/hyg">HYG database</a> (CC BY-SA 4.0). Constellation figures: <a href="https://github.com/ofrohn/d3-celestial">d3-celestial</a> (BSD-3). Constellation boundaries: IAU (Delporte 1930) via Roman (1987), CDS VI/42. Milky Way: <a href="https://svs.gsfc.nasa.gov/4851">NASA/Goddard Space Flight Center Scientific Visualization Studio</a>, Deep Star Maps 2020; Gaia DR2: ESA/Gaia/DPAC.</p>
+		<h3 id="faq">Questions</h3>
+		<!-- Keep these word for word the same as the FAQPage JSON-LD in <head> (page-test.js checks). -->
+		<div class="faq">
+			<h4>What is on the other side of the world from me?</h4>
+			<p>Point your phone straight down: the place in the middle of the view is the exact opposite side of the world from where you are, called the antipode. For most places it is sea. From Brisbane it is the Atlantic Ocean, about 880 km west of the Canary Islands; from London it is the Pacific, about 220 km from New Zealand's Antipodes Islands; from Madrid it is New Zealand itself.</p>
+			<h4>What planets can I see tonight?</h4>
+			<p>Point your phone up. The Sun, the Moon and the planets are shown and named where they are in your sky right now, with the brighter stars, the constellations and the Milky Way. By day the sky is blue and the stars are hidden, as they really are. For tonight's planets with rising and setting times, see orrery.live's night sky.</p>
+			<h4>How far is it through the Earth?</h4>
+			<p>Straight down to the opposite side is 12,742 km, the width of the Earth, through the crust, the mantle, the liquid outer core and the solid inner core. Wherever you point, the card gives the distance in a straight line, the distance round the surface, and the deepest layer the line passes through.</p>
+			<h4>Why does the map look back to front?</h4>
+			<p>You are looking at the far side of the Earth from inside it, so the map is the mirror image of the one you know, just as a sign reads backwards from behind a window. The names are written the right way round so you can read them.</p>
+			<h4>Can I find a planet, a star or a country?</h4>
+			<p>Yes. Tap Find and start typing: the Sun, the Moon, the planets, the named stars, the constellations, the countries and the oceans are all there. Pick one and the view turns to it, or, with the compass, an arrow shows which way to point your phone. Countries are found straight through the Earth.</p>
+			<h4>Does it work on iPhone, Android and computers?</h4>
+			<p>Yes, in Safari, Chrome, Firefox or Edge. On a phone, tap Start and allow motion and location when asked; on an iPhone, hold the phone flat over the floor for a moment so the compass can settle. On a computer, or without a compass, drag to look around and scroll or pinch to zoom.</p>
+			<h4>Does it send my location anywhere?</h4>
+			<p>No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the &quot;looking from&quot; search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder.</p>
+		</div>
 		<p class="note">Just for fun. More tools at <a href="https://games.adamwoodland.com/">Adam's Arcade</a>. Made by <a href="https://adamwoodland.com/">Adam Woodland</a>. Design, code and content developed with the assistance of AI (Anthropic Claude).</p>
 	</div>
 </dialog>

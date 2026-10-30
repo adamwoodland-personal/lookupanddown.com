@@ -12,7 +12,7 @@ Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sk
 
 ## Links
 
-- [Look Up and Down](https://lookupanddown.com/): the page itself, with how it works in its info sheet
+- [Look Up and Down](https://lookupanddown.com/): the page itself, with how it works and a list of questions (the antipode, tonight's planets, the distance through the Earth) in its info sheet
 
 ## Related
 

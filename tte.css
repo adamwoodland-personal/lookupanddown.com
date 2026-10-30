@@ -122,6 +122,8 @@ dialog.sheet::backdrop { background: rgba(2, 5, 8, 0.72); }
 .sheet h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cyan); text-shadow: 0 0 12px rgba(76, 242, 255, 0.5); }
 .sheet h2 { margin: 0 0 12px; font-size: 20px; color: var(--cyan); }
 .sheet h3 { margin: 16px 0 4px; font-size: 16px; }
+.sheet h4 { margin: 12px 0 2px; font-size: 15px; color: var(--cyan); }
+.faq p { margin-top: 0; }
 .sheet p { line-height: 1.5; }
 .sheet .lead { font-size: 17px; }
 .sheet .hint { color: #ffd9a0; font-size: 14px; }
