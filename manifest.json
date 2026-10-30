@@ -1,0 +1,20 @@
+{
+	"id": "/",
+	"lang": "en-GB",
+	"dir": "ltr",
+	"categories": ["education", "navigation"],
+	"name": "Look Up and Down",
+	"short_name": "Up and Down",
+	"description": "Point your phone up for the planets and stars above you, or down to see straight through the Earth to the other side of the world.",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "any",
+	"background_color": "#03070d",
+	"theme_color": "#05080c",
+	"icons": [
+		{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+		{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+		{ "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+	]
+}

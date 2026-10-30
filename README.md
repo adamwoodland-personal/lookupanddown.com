@@ -19,6 +19,7 @@ Static files, no build step, no backend:
 - `orientation.js`: the phone's attitude, the iPhone compass calibration and the World Magnetic Model 2025.
 - Copied from [orrery.live](https://orrery.live/) (also MIT): `sky/astro.js`, `sky/vsop87.js`, `sky/constellation-names.js`, `guide-orbits.js`, `stars.js`, `constellations.js`.
 - `lib/`: [three.js](https://threejs.org/) (MIT) and [topojson-client](https://github.com/topojson/topojson-client) (ISC).
+- `sw.js`, `manifest.json` and the icons: an installable app that works offline once opened (apart from the place search). Bump `CACHE` in `sw.js` whenever a precached file changes.
 
 ## Data and credits
 

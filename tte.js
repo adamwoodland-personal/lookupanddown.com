@@ -188,14 +188,15 @@ addEventListener('resize', resize);
 // ---- Toasts --------------------------------------------------------------------------------------------
 const toastQ = [];
 let toastBusy = false;
-function toast(msg) { toastQ.push(msg); if (!toastBusy) nextToast(); }
+// ms: how long a message stays, for the longer ones (otherwise 3.2 s, or 2 s with more waiting).
+function toast(msg, ms) { toastQ.push({ msg, ms }); if (!toastBusy) nextToast(); }
 function nextToast() {
-	const t = $('toast'), msg = toastQ.shift();
-	if (!msg) { toastBusy = false; t.classList.remove('show'); return; }
+	const t = $('toast'), item = toastQ.shift();
+	if (!item) { toastBusy = false; t.classList.remove('show'); return; }
 	toastBusy = true;
-	t.textContent = msg;
+	t.textContent = item.msg;
 	t.classList.add('show');
-	setTimeout(() => { t.classList.remove('show'); setTimeout(nextToast, 300); }, toastQ.length ? 2000 : 3200);
+	setTimeout(() => { t.classList.remove('show'); setTimeout(nextToast, 300); }, item.ms || (toastQ.length ? 2000 : 3200));
 }
 
 // ---- Looking: the phone, or dragging ----------------------------------------------------------------------
@@ -373,16 +374,22 @@ addEventListener('pagehide', stopCamera);
 // moves the generation on, so a GPS fix that arrives later can't override the visitor's choice.
 let locGen = 0;
 function choosePlace(p) { locGen++; setPlace(p); }
+// A copy added to an iPhone or iPad Home Screen follows Location Services › System Services ›
+// In-App Web Browsing, not Safari's setting, and only reads it when the app starts (as on
+// whatsacross.com and weathermodels.app).
+const IOS_APP = (/iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1))
+	&& (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches);
 function askLocation(quiet) {
-	if (!navigator.geolocation) { if (!quiet) toast('Location is not available here: pick a city'); return; }
+	if (!navigator.geolocation) { if (!quiet) toast('Location is not available here: search for a place instead'); return; }
 	const gen = ++locGen;
 	navigator.geolocation.getCurrentPosition((pos) => {
 		if (gen !== locGen) return;
 		const lat = Math.round(pos.coords.latitude * 100) / 100, lon = Math.round(pos.coords.longitude * 100) / 100;
 		setPlace({ name: 'Your location', lat, lon, source: 'gps' });
-	}, () => {
+	}, (err) => {
 		if (gen !== locGen || quiet) return;
-		toast(`Couldn't get your location: looking from ${S.place.name}. Tap it to change.`);
+		if (IOS_APP && (err.code === 1 || err.code === 2)) toast(`Location is blocked. For an app on the Home Screen, switch on Settings › Privacy & Security › Location Services › System Services › In-App Web Browsing, then close this app fully and open it again. Looking from ${S.place.name} meanwhile.`, 9000);
+		else toast(`Couldn't get your location: looking from ${S.place.name}. Tap it to change.`);
 	}, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
 }
 addEventListener('hashchange', () => { const p = placeFromLink(); if (p) choosePlace(p); });
@@ -843,6 +850,11 @@ if (S.nogl) toast("This browser can't draw the sky and the globe (no WebGL): the
 if (!window.DeviceOrientationEvent || !('ontouchstart' in window)) $('introHint').textContent = 'No motion sensors here? Drag the view to look around, and scroll to zoom.';
 openSheet($('intro'));
 requestAnimationFrame(frame);
+
+// An installable app that works offline (sw.js), on https or localhost only.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+	navigator.serviceWorker.register('/sw.js').catch(() => { /* the page works without it */ });
+}
 
 window.__TTE = {
 	S, src, SKY,

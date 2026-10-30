@@ -8,6 +8,8 @@ Privacy: everything is worked out on the phone. The location and the camera pict
 
 Features: a Find search for the Sun, Moon, planets, named stars, constellations, countries and oceans (the view turns to the pick, or an arrow shows which way to point the phone), and an Earth button that hides the globe to show the whole sky, including the half below the horizon.
 
+Install: an installable app (PWA); once opened it works offline, apart from the place search.
+
 Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sky, places.js for the place search, earth.js, geo.js, texture.js, orientation.js), three.js, MIT-licensed code, no build step, no backend.
 
 ## Links
