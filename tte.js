@@ -270,12 +270,14 @@ function setZoom(z) { S.zoom = Math.min(1.5, Math.max(0.2, z)); setFov(); }
 // ---- Sensors, camera, location (all asked for inside the Start tap) ------------------------------------
 // Aiming: the compass, or dragging. The compass takes over once it gives readings. Dragging the
 // view, the arrow keys or the button under the top bar switch to dragging from wherever the view
-// points, and the button switches back. If readings stop (a permission taken away, a sensor that
-// goes quiet) for STALE ms, the view drops to dragging by itself, and returns to the compass when
-// they resume, unless the visitor chose to drag. Readings are timestamped here, from the same
-// events orientation.js listens to, so its shared copy stays as orrery.live has it.
+// points, and the button switches back. Silence alone never switches (2026-10-30): the orientation
+// events carry no promise of a heartbeat while the phone is still, so a gap in readings may be a
+// phone held steady, not a broken compass. Compass mode then just keeps the last heading, and if the
+// readings really have stopped, a drag takes over by hand. Readings are timestamped here, from the
+// same events orientation.js listens to (so its shared copy stays as orrery.live has it), for the
+// test hook's compassLive.
 const STALE = 3000;
-let lastReading = -1e9, userDrag = false, autoDrag = false;
+let lastReading = -1e9, userDrag = false;
 // Only readings the compass can use count: all three angles, and either an absolute reading
 // (Android) or an iPhone compass heading. A relative stream that carries on, or null readings,
 // don't keep compass mode alive.
@@ -292,34 +294,25 @@ function toDrag() {
 	S.aimMode = 'drag';
 	modeUi();
 }
-function toCompass() { S.aimMode = 'sensor'; aimAnim = null; userDrag = autoDrag = false; modeUi(); }
+function toCompass() { S.aimMode = 'sensor'; aimAnim = null; userDrag = false; modeUi(); }
 function chooseDrag() {
 	if (S.aimMode !== 'sensor') return;
-	userDrag = true; autoDrag = false;
+	userDrag = true;
 	toDrag();
 	toast('Dragging now: tap “Use compass” to follow the phone again');
 }
 function modeUi() {
 	const b = $('modeBtn');
-	b.hidden = !(src.status === 'ok' || autoDrag); // only on a phone whose compass has worked
+	b.hidden = src.status !== 'ok'; // only on a phone whose compass has worked
 	b.textContent = S.aimMode === 'sensor' ? 'Drag instead' : 'Use compass';
 }
+// "Use compass" works whenever the compass has worked, even with no reading in the last moments
+// (the phone may be still): the view follows the next one.
 $('modeBtn').addEventListener('click', () => {
 	if (S.aimMode === 'sensor') chooseDrag();
-	else if (compassLive()) toCompass();
-	else toast('The compass isn’t giving readings just now: keep dragging, or try again in a moment');
+	else if (src.status === 'ok') toCompass();
+	else toast('The compass isn’t giving readings: keep dragging');
 });
-// Called each frame: drop to dragging if the readings have stopped, and back when they resume.
-function watchCompass() {
-	if (S.aimMode === 'sensor' && !compassLive()) {
-		autoDrag = true;
-		toDrag();
-		toast('The compass has stopped: drag to look around');
-	} else if (S.aimMode === 'drag' && autoDrag && !userDrag && compassLive()) {
-		toCompass();
-		toast('The compass is back');
-	}
-}
 src.onstatus = (st) => {
 	if (st === 'ok' && S.aimMode !== 'sensor' && !userDrag) { toCompass(); toast('Point your phone up at the sky, or down at the ground'); }
 	if ((st === 'unsupported' || st === 'denied' || st === 'relative-only') && S.started) toast(st === 'denied' ? 'Motion sensors are off for this site: drag the view instead' : 'No compass here: drag the view to look around');
@@ -848,7 +841,6 @@ function frame(now) {
 		SKY.setTime(dateToDays(new Date()), S.place.lat, S.place.lon);
 	}
 	if (aimAnim) aimAnim(now);
-	watchCompass();
 	updateCamera();
 	S.fade += (1 - S.fade) * Math.min(1, dt * 4);
 	if (renderer) {
