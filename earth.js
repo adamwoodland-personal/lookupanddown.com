@@ -122,8 +122,9 @@ export function layerCrossings(dDeg) {
 		if (rTop <= closest) continue;                // the tunnel never gets this deep
 		const hTop = Math.sqrt(Math.max(rTop * rTop - closest * closest, 0));
 		const hBot = rBot > closest ? Math.sqrt(rBot * rBot - closest * closest) : 0;
+		// In and out; for the deepest layer (hBot = 0) the two halves meet in the middle and merge below.
 		spans.push({ layer: l, from: mid - hTop, to: mid - hBot });
-		if (hBot > 0) spans.push({ layer: l, from: mid + hBot, to: mid + hTop });
+		spans.push({ layer: l, from: mid + hBot, to: mid + hTop });
 	}
 	spans.sort((a, b) => a.from - b.from);
 	// Merge the two halves of the deepest layer, which meet in the middle.

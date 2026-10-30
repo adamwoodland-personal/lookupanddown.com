@@ -5,7 +5,7 @@
 // Adapted from whatsacross.com/app.js (the graph colouring, unwrap, and the rebuilt Antarctica
 // ring filled by our own scanline code because Firefox's GPU canvas fills that one huge path as
 // a solid band); keep the two in step.
-import { displayName } from './geo.js';
+import { displayName, inRing } from './geo.js';
 
 export const OCEAN = '#123d5c';
 const ANT_EDGE = -84.3, POLE_LAT = -89.95;
@@ -173,9 +173,40 @@ export function paintOverlay(topo, topojson, W) {
 	return cv;
 }
 
-// A label point per country: the area-weighted centroid of its biggest piece, and its total
-// area for ranking (both in degrees², latitude-corrected).
-export function labelPoints(topo, topojson) {
+// A point inside a polygon (rings in lon/lat, holes after the first) that isIn(lat, lon) accepts,
+// as far from the edges as a 40 × 40 grid over its bounding box finds (distances in degrees, with
+// longitude scaled by the cosine of the middle latitude). For countries whose centroid falls
+// outside their own outline: Vietnam's, for one, lies in Laos. Null if no grid point will do.
+function interiorPoint(rings, isIn) {
+	const outer = rings[0];
+	let w = Infinity, e = -Infinity, s = Infinity, n = -Infinity;
+	for (const [x, y] of outer) { if (x < w) w = x; if (x > e) e = x; if (y < s) s = y; if (y > n) n = y; }
+	const k = Math.cos((s + n) / 2 * Math.PI / 180), N = 40, cands = [];
+	const inside = (x, y) => inRing(x, y, outer) && !rings.slice(1).some((h) => inRing(x, y, h));
+	const edgeDist = (x, y) => {
+		let best = Infinity;
+		for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+			const ax = r[j][0] * k, ay = r[j][1], bx = r[i][0] * k, by = r[i][1], px = x * k;
+			const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+			const t = L ? Math.max(0, Math.min(1, ((px - ax) * dx + (y - ay) * dy) / L)) : 0;
+			best = Math.min(best, Math.hypot(px - ax - t * dx, y - ay - t * dy));
+		}
+		return best;
+	};
+	for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+		const x = w + (e - w) * (i + 0.5) / N, y = s + (n - s) * (j + 0.5) / N;
+		if (inside(x, y)) cands.push([x, y, edgeDist(x, y)]);
+	}
+	cands.sort((a, b) => b[2] - a[2]);
+	for (const [x, y] of cands) if (isIn(y, x)) return { lat: y, lon: x };
+	return null;
+}
+
+// A label point per country, which Find also aims at: the area-weighted centroid of its biggest
+// piece, and its total area for ranking (both in degrees², latitude-corrected). With isIn(name,
+// lat, lon) (tte.js passes geo.js's lookup, the one the card uses), a centroid it rejects is
+// replaced by interiorPoint(), so Find and the card agree. Antarctica is pinned at 80°S, 40°E.
+export function labelPoints(topo, topojson, isIn = null) {
 	const out = [];
 	for (const f of topojson.feature(topo, topo.objects.countries).features) {
 		const g = f.geometry;
@@ -194,9 +225,14 @@ export function labelPoints(topo, topojson) {
 			if (!a) continue;
 			const lat = cy / (3 * a), area = Math.abs(a / 2) * Math.cos(lat * Math.PI / 180);
 			total += area;
-			if (!best || area > best.area) best = { lat, lon: ((cx / (3 * a) + 540) % 360) - 180, area };
+			if (!best || area > best.area) best = { lat, lon: ((cx / (3 * a) + 540) % 360) - 180, area, poly };
 		}
-		if (best) out.push({ name, lat: best.lat, lon: best.lon, area: total });
+		if (!best) continue;
+		if (isIn && !isIn(name, best.lat, best.lon)) {
+			const p = interiorPoint(best.poly.map((r) => unwrap(r).ring), (lat, lon) => isIn(name, lat, ((lon + 540) % 360) - 180));
+			if (p) { best.lat = p.lat; best.lon = ((p.lon + 540) % 360) - 180; best.moved = true; }
+		}
+		out.push({ name, lat: best.lat, lon: best.lon, area: total, moved: !!best.moved });
 	}
 	return out.sort((a, b) => b.area - a.area);
 }

@@ -60,7 +60,10 @@
 		<button id="camBtn" class="icon" type="button" aria-pressed="false" title="Camera on or off">Cam</button>
 		<button id="infoBtn" class="icon" type="button" aria-haspopup="dialog" title="How it works">ⓘ</button>
 	</div>
-	<p id="aimText">…</p>
+	<div class="aimRow">
+		<p id="aimText">…</p>
+		<button id="modeBtn" class="chip mode" type="button" hidden>Drag instead</button>
+	</div>
 	<button id="targetChip" class="chip target" type="button" hidden title="Stop showing the way">Showing <span id="targetName"></span> <span aria-hidden="true">✕</span><span class="sr">(clear)</span></button>
 	<p id="calib" hidden></p>
 </header>
@@ -69,6 +72,7 @@
 	<p class="kicker" id="cKicker">One moment</p>
 	<p class="name" id="cName">…</p>
 	<p class="detail" id="cDetail"></p>
+	<button id="retryBtn" class="plain retry" type="button" hidden>Try again</button>
 </section>
 
 <p id="toast" role="status" aria-live="polite"></p>

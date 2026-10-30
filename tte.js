@@ -228,7 +228,7 @@ function updateCamera() {
 	const ptrs = new Map();
 	let pinch0 = null;
 	view.addEventListener('pointerdown', (e) => {
-		ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+		ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY });
 		if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch0 = { d: Math.hypot(a.x - b.x, a.y - b.y), zoom: S.zoom }; }
 	});
 	addEventListener('pointermove', (e) => {
@@ -241,6 +241,8 @@ function updateCamera() {
 			return;
 		}
 		const k = camera.fov / innerHeight; // degrees per pixel, so the view follows the finger
+		// A real drag (not a tap) while the compass is aiming takes over by hand from where it points.
+		if (S.aimMode === 'sensor' && ptrs.size === 1 && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) > 12) chooseDrag();
 		if (S.aimMode === 'drag') {
 			aimAnim = null;
 			S.az = ((S.az - (e.clientX - p.x) * k) % 360 + 360) % 360;
@@ -252,9 +254,11 @@ function updateCamera() {
 	addEventListener('pointerup', end); addEventListener('pointercancel', end);
 	view.addEventListener('wheel', (e) => { e.preventDefault(); setZoom(S.zoom * Math.exp(e.deltaY * 0.0012)); }, { passive: false });
 	addEventListener('keydown', (e) => {
-		if (S.aimMode !== 'drag' || e.target.closest('input, select')) return;
+		// Not while typing, nor while a dialog is open: there the arrow keys scroll and move focus.
+		if (e.target.closest('input, select, textarea, dialog') || document.querySelector('dialog[open]')) return;
 		const k = { ArrowLeft: [-3, 0], ArrowRight: [3, 0], ArrowUp: [0, -3], ArrowDown: [0, 3] }[e.key];
 		if (!k) return;
+		if (S.aimMode === 'sensor') chooseDrag();
 		aimAnim = null;
 		S.az = ((S.az + k[0]) % 360 + 360) % 360; S.dep = Math.min(90, Math.max(-90, S.dep + k[1]));
 		e.preventDefault();
@@ -263,9 +267,62 @@ function updateCamera() {
 function setZoom(z) { S.zoom = Math.min(1.5, Math.max(0.2, z)); setFov(); }
 
 // ---- Sensors, camera, location (all asked for inside the Start tap) ------------------------------------
+// Aiming: the compass, or dragging. The compass takes over once it gives readings. Dragging the
+// view, the arrow keys or the button under the top bar switch to dragging from wherever the view
+// points, and the button switches back. If readings stop (a permission taken away, a sensor that
+// goes quiet) for STALE ms, the view drops to dragging by itself, and returns to the compass when
+// they resume, unless the visitor chose to drag. Readings are timestamped here, from the same
+// events orientation.js listens to, so its shared copy stays as orrery.live has it.
+const STALE = 3000;
+let lastReading = -1e9, userDrag = false, autoDrag = false;
+// Only readings the compass can use count: all three angles, and either an absolute reading
+// (Android) or an iPhone compass heading. A relative stream that carries on, or null readings,
+// don't keep compass mode alive.
+const reading = (e) => {
+	if (Number.isFinite(e.alpha) && Number.isFinite(e.beta) && Number.isFinite(e.gamma) && (e.absolute === true || Number.isFinite(e.webkitCompassHeading))) lastReading = performance.now();
+};
+addEventListener('deviceorientation', reading);
+addEventListener('deviceorientationabsolute', reading);
+// A page coming back from the background gets a moment for the readings to restart.
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') lastReading = Math.max(lastReading, performance.now()); });
+const compassLive = () => src.status === 'ok' && performance.now() - lastReading < STALE;
+function toDrag() {
+	if (S.aimMode !== 'drag' && S.look) { S.az = S.look.az; S.dep = Math.max(-90, Math.min(90, S.look.dep)); } // keep looking where the phone pointed
+	S.aimMode = 'drag';
+	modeUi();
+}
+function toCompass() { S.aimMode = 'sensor'; aimAnim = null; userDrag = autoDrag = false; modeUi(); }
+function chooseDrag() {
+	if (S.aimMode !== 'sensor') return;
+	userDrag = true; autoDrag = false;
+	toDrag();
+	toast('Dragging now: tap “Use compass” to follow the phone again');
+}
+function modeUi() {
+	const b = $('modeBtn');
+	b.hidden = !(src.status === 'ok' || autoDrag); // only on a phone whose compass has worked
+	b.textContent = S.aimMode === 'sensor' ? 'Drag instead' : 'Use compass';
+}
+$('modeBtn').addEventListener('click', () => {
+	if (S.aimMode === 'sensor') chooseDrag();
+	else if (compassLive()) toCompass();
+	else toast('The compass isn’t giving readings just now: keep dragging, or try again in a moment');
+});
+// Called each frame: drop to dragging if the readings have stopped, and back when they resume.
+function watchCompass() {
+	if (S.aimMode === 'sensor' && !compassLive()) {
+		autoDrag = true;
+		toDrag();
+		toast('The compass has stopped: drag to look around');
+	} else if (S.aimMode === 'drag' && autoDrag && !userDrag && compassLive()) {
+		toCompass();
+		toast('The compass is back');
+	}
+}
 src.onstatus = (st) => {
-	if (st === 'ok' && S.aimMode !== 'sensor') { S.aimMode = 'sensor'; toast('Point your phone up at the sky, or down at the ground'); }
+	if (st === 'ok' && S.aimMode !== 'sensor' && !userDrag) { toCompass(); toast('Point your phone up at the sky, or down at the ground'); }
 	if ((st === 'unsupported' || st === 'denied' || st === 'relative-only') && S.started) toast(st === 'denied' ? 'Motion sensors are off for this site: drag the view instead' : 'No compass here: drag the view to look around');
+	modeUi();
 };
 // The camera. Only one request can be in flight (camPending, with the Cam button disabled), and
 // each request carries a token: stopCamera() bumps it, so a stream that arrives after the visitor
@@ -414,8 +471,12 @@ $('placeForm').addEventListener('submit', async (e) => {
 // The globe on or off. Off shows the full sky: below the horizon the dark sky beyond the far side
 // of the Earth, with its stars and names. Remembered in this browser only.
 const PREFS = 'lud-prefs-v1';
+// Anything else stored under the key (true, 1, "text", [], a non-boolean globe) is ignored.
 let prefs = {};
-try { prefs = JSON.parse(localStorage.getItem(PREFS) || '{}') || {}; } catch (e) { prefs = {}; }
+try {
+	const raw = JSON.parse(localStorage.getItem(PREFS) || '{}');
+	if (raw && typeof raw === 'object' && !Array.isArray(raw) && typeof raw.globe === 'boolean') prefs = { globe: raw.globe };
+} catch (e) { prefs = {}; }
 function setGlobe(on) {
 	S.globe = !!on;
 	SKY.setFullSky(!S.globe);
@@ -620,21 +681,29 @@ if (renderer) {
 	view.addEventListener('webglcontextrestored', () => { buildTextures(getTopo()).catch(() => toast("Couldn't reload the map after a graphics reset")); });
 }
 
+// The map of the world: the country outlines behind the names, the place lookup, Find's
+// countries and the line overlay. If it fails to load, the Earth card says so, with a Try again
+// button (S.worldError), rather than "Loading the world…" for ever.
 let labels = [];
-{
+function loadWorld() {
+	S.worldError = false;
 	const topoP = getTopo();
 	topoP
 		.then((topo) => new Promise((ok) => setTimeout(() => ok(topo), 30)))
 		.then((topo) => {
 			G.load(topo, window.topojson);
-			labels = labelPoints(topo, window.topojson).map((l) => ({ text: l.name, v: vec(l.lat, l.lon), size: Math.sqrt(l.area) * DEG, kind: 'land' }));
+			// Find aims at these, so each must lie in its country by the lookup the card uses.
+			labels = labelPoints(topo, window.topojson, (name, lat, lon) => G.countryAt(lat, lon) === name).map((l) => ({ text: l.name, v: vec(l.lat, l.lon), size: Math.sqrt(l.area) * DEG, kind: 'land' }));
 			for (const [text, lat, lon] of OCEANS) labels.push({ text, v: vec(lat, lon), size: 1, kind: 'sea' });
 			anti = { text: 'Exact opposite side', v: P.clone().negate(), size: 9, kind: 'opp' };
+			findIndex = null;
 			S.ready = true;
 		})
-		.catch(() => toast("Couldn't load the map of the world"));
+		.catch(() => { S.worldError = true; toast("Couldn't load the map of the world"); });
 	if (renderer) buildTextures(topoP).catch(() => {});
 }
+loadWorld();
+$('retryBtn').addEventListener('click', () => { if (!S.ready) { loadWorld(); readouts(); } });
 
 // Names. All of them share one declutter (skyview.js's claim grid): the top bar and the card are
 // taken first, then the sky's bodies and compass points, then the globe's names (the
@@ -705,6 +774,7 @@ function readouts() {
 	if (showCal) cal.textContent = src.calibrating ? 'Settling the compass: hold the phone flat over the floor for a moment.' : 'The compass is unsure here: move the phone in a figure of eight, away from metal.';
 	const card = $('card'), earth = S.globe && !!L.hit && L.dep >= EARTH_FROM;
 	card.classList.toggle('sky', !earth);
+	$('retryBtn').hidden = !(earth && S.worldError && !S.ready);
 	if (!earth) {
 		const d = SKY.describe(L.fwd);
 		$('cKicker').textContent = d.kicker;
@@ -714,7 +784,13 @@ function readouts() {
 		return;
 	}
 	$('cName').style.color = '';
-	if (!S.ready) { $('cKicker').textContent = 'One moment'; $('cName').textContent = 'Loading the world…'; $('cDetail').textContent = ''; return; }
+	if (!S.ready) {
+		const failed = !!S.worldError;
+		$('cKicker').textContent = failed ? 'The map of the world didn’t load' : 'One moment';
+		$('cName').textContent = failed ? 'No map to show' : 'Loading the world…';
+		$('cDetail').textContent = failed ? 'Check the connection, then try again.' : '';
+		return;
+	}
 	const where = G.whereIs(L.hit.lat, L.hit.lon), deep = E.deepestPoint(L.dep);
 	const through = deep > 5150 ? 'through both cores' : deep > 2891 ? 'through the outer core' : deep > 660 ? 'through the lower mantle' : deep > 35 ? 'through the upper mantle' : 'through the crust';
 	// A Sun, Moon or planet in the same direction, out beyond the far side, or what Find picked.
@@ -741,6 +817,7 @@ function frame(now) {
 		SKY.setTime(dateToDays(new Date()), S.place.lat, S.place.lon);
 	}
 	if (aimAnim) aimAnim(now);
+	watchCompass();
 	updateCamera();
 	S.fade += (1 - S.fade) * Math.min(1, dt * 4);
 	if (renderer) {
@@ -778,6 +855,8 @@ window.__TTE = {
 	visibleLabels() { return pool.filter((p) => !p.el.hidden).map((p) => p.text); },
 	skyLabels() { return [...labelBox.children].filter((el) => !el.hidden && !el.classList.contains('pl')).map((el) => el.textContent); },
 	setGlobe,
+	get compassLive() { return compassLive(); },
+	loadWorld,
 	find: (q) => findMatches(q).map((it) => ({ name: it.name, sub: it.sub, kind: it.kind })),
 	get aiming() { return !!aimAnim; },
 	targetInCamera() { const d = targetDir(); return d ? d.clone().applyQuaternion(SKY.camera.quaternion.clone().invert()).toArray() : null; },
