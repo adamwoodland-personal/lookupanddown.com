@@ -68,6 +68,7 @@
     "Distance through the Earth and the layers on the way: crust, mantle, outer and inner core",
     "Find the Sun, Moon, planets, stars, constellations, countries and oceans",
     "Hide the Earth to see the whole sky, including the half below the horizon",
+    "Share a link to the view: the place and what you are looking at",
     "Phone compass and camera, or drag to look on a computer"
    ],
    "isPartOf": {
@@ -153,7 +154,7 @@
    "name": "Does it send my location anywhere?",
    "acceptedAnswer": {
     "@type": "Answer",
-    "text": "No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the \"looking from\" search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder."
+    "text": "No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the \"looking from\" search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder. If you share a view, the link goes only where you send it, with the place rounded to about a kilometre and no name for your GPS position or a street address."
    }
   }
  ]
@@ -188,6 +189,7 @@
 </header>
 
 <section id="card" aria-live="polite">
+	<button id="viewLinkBtn" class="icon" type="button" title="Share this view: the place and what you're looking at">Share</button>
 	<p class="kicker" id="cKicker">One moment</p>
 	<p class="name" id="cName">…</p>
 	<p class="detail" id="cDetail"></p>
@@ -248,13 +250,13 @@
 		<h3>The sky</h3>
 		<p>The sky is the same as on <a href="https://orrery.live/night-sky/">orrery.live's night sky</a>, worked out on your phone for this moment: by day it is blue and the stars are hidden, as they really are, unless Night mode is on. Things below the horizon, such as the Sun at night, keep their names, faint, where they sit beyond the far side of the Earth.</p>
 		<h3>The buttons</h3>
-		<p><b>Find</b> searches the Sun, the Moon, the planets, the named stars, the constellations, the countries and the oceans; pick one and the view turns to it, or an arrow shows which way to point the phone. <b>Earth</b> hides the glass Earth to show the whole sky, including the half below the horizon, as a dark sky with its names. <b>☾</b> is Night mode: the sky is drawn as at night even in the daytime, so you can see the stars, the constellations and the Milky Way where they are, and the screen is much darker; with the camera on, the camera picture is dimmed so the stars still show over it. <b>Cam</b> shows the camera picture behind the view. Tap the place at the top left to look from somewhere else.</p>
+		<p><b>Find</b> searches the Sun, the Moon, the planets, the named stars, the constellations, the countries and the oceans; pick one and the view turns to it, or an arrow shows which way to point the phone. <b>Earth</b> hides the glass Earth to show the whole sky, including the half below the horizon, as a dark sky with its names. <b>☾</b> is Night mode: the sky is drawn as at night even in the daytime, so you can see the stars, the constellations and the Milky Way where they are, and the screen is much darker; with the camera on, the camera picture is dimmed so the stars still show over it. <b>Cam</b> shows the camera picture behind the view. Tap the place at the top left to look from somewhere else. <b>Share</b>, on the card, sends a link to the place and to what you're looking at: whoever opens it is turned to the same thing, as the sky is then. The place in it is rounded to about a kilometre, and your GPS position or a street address you searched for isn't named.</p>
 		<h3>Why it looks back to front</h3>
 		<p>You are seeing the far side from inside the Earth, so the map is the mirror image of the one you know, just as a sign reads backwards from behind a window. The names are written the right way round so you can read them.</p>
 		<h3>The glow</h3>
 		<p>The blue haze towards the edge of the view is the atmosphere, seen at a slant where your line of sight skims the far surface. Look steeply down and you will see faint orange rings: the Earth's liquid outer core and solid inner core, which your line of sight passes through on the way.</p>
 		<h3>Your privacy</h3>
-		<p>Your GPS position and the camera picture are used only on your phone and never leave it. Find searches only on your phone. When you search for a place to look from, the words you type are sent to Photon (OpenStreetMap data, run by komoot), or to Open-Meteo's place finder if Photon fails, and nothing else. A link that starts somewhere else carries that place after a #, which browsers keep to themselves rather than sending to the website.</p>
+		<p>Your GPS position and the camera picture are used only on your phone and never leave it. Find searches only on your phone. When you search for a place to look from, the words you type are sent to Photon (OpenStreetMap data, run by komoot), or to Open-Meteo's place finder if Photon fails, and nothing else. A link that starts somewhere else carries that place after a #, which browsers keep to themselves rather than sending to the website. Share makes such a link: the place in it is rounded to about a kilometre, and your GPS position or a street address you searched for goes without its name.</p>
 		<h3>How it's worked out</h3>
 		<p>The satellite picture is NASA's Blue Marble (public domain), and places come from Natural Earth's country outlines, the same as on <a href="https://whatsacross.com/">What's Across</a>. Your phone's compass is corrected from magnetic to true north with the World Magnetic Model 2025. The Earth is treated as a perfect sphere, and phone compasses are only good to a few degrees, so a far-away place can be a few hundred km off. The layers the line of sight passes through come from the Preliminary Reference Earth Model (Dziewonski and Anderson, 1981).</p>
 		<p>The planets come from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons. Star data: <a href="https://codeberg.org/astronexus/hyg">HYG database</a> (CC BY-SA 4.0). Constellation figures: <a href="https://github.com/ofrohn/d3-celestial">d3-celestial</a> (BSD-3). Constellation boundaries: IAU (Delporte 1930) via Roman (1987), CDS VI/42. Milky Way: <a href="https://svs.gsfc.nasa.gov/4851">NASA/Goddard Space Flight Center Scientific Visualization Studio</a>, Deep Star Maps 2020; Gaia DR2: ESA/Gaia/DPAC.</p>
@@ -276,7 +278,7 @@
 			<h4>Does it work without signal?</h4>
 			<p>Yes, apart from the place search. Open it once with a connection, and after that the sky and the glass Earth work without one. To keep it handy, add it to your home screen: in Safari tap Share, then Add to Home Screen; in Chrome, choose Install app or Add to Home screen from the menu.</p>
 			<h4>Does it send my location anywhere?</h4>
-			<p>No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the &quot;looking from&quot; search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder.</p>
+			<p>No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the &quot;looking from&quot; search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder. If you share a view, the link goes only where you send it, with the place rounded to about a kilometre and no name for your GPS position or a street address.</p>
 		</div>
 		<p class="note">Just for fun. More tools at <a href="https://games.adamwoodland.com/">Adam's Arcade</a>. Made by <a href="https://adamwoodland.com/">Adam Woodland</a>. Design, code and content developed with the assistance of AI (Anthropic Claude).</p>
 	</div>

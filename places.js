@@ -22,8 +22,11 @@ function photonPlace(f) {
 	for (const x of [p.district, p.locality, p.city, p.county, p.state, p.country]) if (x && x !== name && !where.includes(x)) where.push(x);
 	let type = p.osm_value || '';
 	if (type === 'yes' || type === 'administrative') type = p.type === 'house' ? 'address' : (p.osm_key || '');
+	// (a street address: a shared link names only its suburb or town)
+	const address = p.type === 'house' || !!p.housenumber;
 	return { name, where: where.join(', '), type: type.replace(/_/g, ' '),
-		lat: +f.geometry.coordinates[1].toFixed(4), lon: +f.geometry.coordinates[0].toFixed(4) };
+		lat: +f.geometry.coordinates[1].toFixed(4), lon: +f.geometry.coordinates[0].toFixed(4),
+		address, locality: address ? p.district || p.locality || p.city || '' : '' };
 }
 
 async function photon(q) {

@@ -6,6 +6,8 @@ Point your phone up to see the sky above you, right now: the Sun, the Moon, the 
 
 Night mode (the ☾ button) draws the night sky even in the daytime, so the stars, the constellations and the Milky Way show where they really are; with the camera on, the camera picture is dimmed so they show over it.
 
+Share, on the card, sends a link to the place and to what the view is on: whoever opens it is turned to the same thing (a planet or star where it is in the sky when the link is opened; a place through the Earth in exactly the same direction). The place in the link is rounded to 0.01° (about a kilometre), and a GPS position or a searched street address is not named.
+
 A card names whatever is in the middle of the view: a planet, star or constellation above the horizon; below it, the country or ocean on the far side, how far away it is, and which of the Earth's layers the line of sight passes through. Without a compass (on a computer, say) you drag to look around.
 
 Just for fun. Everything runs in the browser; the location and camera picture never leave the phone. Only a place name you type into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder.

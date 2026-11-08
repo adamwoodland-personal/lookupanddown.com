@@ -78,7 +78,10 @@ function placeFromLink(hash = location.hash) {
 	const lat = Number(parts[0]), lon = Number(parts[1]);
 	if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
 	const name = (q.get('name') || '').trim().slice(0, 60);
-	return { name: name || `${lat.toFixed(2)}, ${lon.toFixed(2)}`, lat, lon, source: 'link' };
+	// (finer than a shared link's two decimals: someone's exact spot, whose name may be their address,
+	// which a link shared from here then leaves out)
+	const fine = parts.some((v) => (v.split('.')[1] || '').length > 2);
+	return { name: name || `${lat.toFixed(2)}, ${lon.toFixed(2)}`, lat, lon, source: 'link', fine };
 }
 
 // ---- State ---------------------------------------------------------------------------------------------
@@ -385,7 +388,7 @@ function askLocation(quiet) {
 		else toast(`Couldn't get your location: looking from ${S.place.name}. Tap it to change.`);
 	}, { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
 }
-addEventListener('hashchange', () => { const p = placeFromLink(); if (p) choosePlace(p); });
+addEventListener('hashchange', () => { const p = placeFromLink(); if (p) choosePlace(p); linkView = viewFromLink(); linkViewAt = 0; });
 let wakeLock = null;
 async function keepAwake() {
 	try { if (navigator.wakeLock && document.visibilityState === 'visible') wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* optional */ }
@@ -459,7 +462,7 @@ $('placeForm').addEventListener('submit', async (e) => {
 		if (mine !== placeSeq) return;
 		status.textContent = list.length ? '' : `No places found for “${q}”.`;
 		resultList(box, list.map((p) => ({ ...p, sub: [p.type, p.where].filter(Boolean).join(' · ') || `${p.lat.toFixed(2)}, ${p.lon.toFixed(2)}` })), (p) => {
-			choosePlace({ name: p.name.slice(0, 60), lat: p.lat, lon: p.lon, source: 'search' });
+			choosePlace({ name: p.name.slice(0, 60), lat: p.lat, lon: p.lon, source: 'search', address: !!p.address, locality: (p.locality || '').slice(0, 60) });
 			closeSheet($('placeSheet'));
 		});
 	} catch (err) {
@@ -588,6 +591,88 @@ function aimTowards(d) {
 		if (k >= 1) aimAnim = null;
 	};
 }
+// ---- Share this view ---------------------------------------------------------------------------------------
+// A link to the place and to what the view is on: what Find picked, else what the card names (a Sun,
+// Moon or planet, a bright star or the constellation, or the place through the Earth), as see=, with
+// its direction (az, dep). Opened, a view through the Earth faces that direction exactly when dragging
+// (from the same place the far side never moves); anything in the sky is picked as Find would pick it,
+// since it moves: the view swings round to where it is when the link is opened, or with the compass an
+// arrow shows which way to turn. The place is rounded to 0.01° (about 1 km); a GPS position goes
+// without a name, a searched street address by its suburb or town, and a place from a link finer than
+// that without its name, so a shared link never gives away where someone is. The phone's own share
+// sheet where there is one, else the link is copied.
+function viewSubject() {
+	const L = S.look;
+	if (S.target) return { name: S.target.name, earth: S.target.kind === 'earth', d: targetDir() };
+	if (!L) return { name: '', earth: false, d: null };
+	if (S.globe && !!L.hit && L.dep >= EARTH_FROM) return { name: S.ready ? cap(G.whereIs(L.hit.lat, L.hit.lon).name) : '', earth: true, d: null };
+	return { name: SKY.describe(L.fwd).name, earth: false, d: null };
+}
+function viewLink() {
+	const p = S.place, L = S.look, f = (v) => String(+v.toFixed(2)), sub = viewSubject();
+	const from = p.source === 'gps' ? '' : p.address ? p.locality || '' : p.source === 'link' && p.fine ? '' : p.name;
+	const q = [`at=${f(p.lat)},${f(p.lon)}`];
+	if (from) q.push(`name=${encodeURIComponent(from)}`);
+	if (sub.name) q.push(`see=${encodeURIComponent(sub.name)}`);
+	// (the direction of what Find picked, else of the view)
+	const az = sub.d ? (Math.atan2(sub.d.x, -sub.d.z) / DEG + 360) % 360 : L ? L.az : null;
+	const dep = sub.d ? -Math.asin(Math.max(-1, Math.min(1, sub.d.y))) / DEG : L ? L.dep : 0;
+	if (az !== null) q.push(`az=${Math.round(az * 10) / 10 % 360}`, `dep=${Math.round(dep * 10) / 10}`);
+	return { url: `${location.origin}${location.pathname}#${q.join('&')}`, see: sub.name, earth: sub.earth, from };
+}
+$('viewLinkBtn').addEventListener('click', async () => {
+	const { url, see, earth, from } = viewLink();
+	const text = !see ? 'Look Up and Down' : earth ? `${see}, straight through the Earth${from ? ` from ${from}` : ''}` : `${see}${from ? `, seen from ${from}` : ' in the sky'}`;
+	if (navigator.share) {
+		try { await navigator.share({ title: 'Look Up and Down', text, url }); return; }
+		catch (e) { if (e && e.name === 'AbortError') return; } // (cancelled: nothing more)
+	}
+	try { await navigator.clipboard.writeText(url); toast(see ? `Link copied: it opens on ${see}` : 'Link copied'); }
+	catch (e) { toast(url, 15000); } // (no clipboard: shown, to copy by hand)
+});
+// A shared view: see= (60 characters at most, without hidden or reordering characters) and the direction.
+function viewFromLink(hash = location.hash) {
+	const q = new URLSearchParams(hash.replace(/^#/, ''));
+	const see = (q.get('see') || '').replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, '').trim().slice(0, 60);
+	const num = (k, lo, hi) => { const v = (q.get(k) || '').trim(); return NUM.test(v) && +v >= lo && +v <= hi ? +v : null; };
+	const az = num('az', 0, 360), dep = num('dep', -90, 90);
+	return see || az !== null ? { see, az: az === null ? null : az % 360, dep: dep === null ? 0 : dep } : null;
+}
+let linkView = viewFromLink(), linkViewAt = 0;
+// The far side in a direction from here (degrees; dep > 0, down), in Earth-fixed axes: as in
+// updateCamera, the line of sight meets it at P + t·w, t = −2·(P·w).
+function farSide(az, dep) {
+	const a = az * DEG, d = dep * DEG;
+	const w = new THREE.Vector3(Math.cos(d) * Math.sin(a), -Math.sin(d), -Math.cos(d) * Math.cos(a)).applyQuaternion(qBasis);
+	return w.multiplyScalar(-2 * w.dot(P)).add(P);
+}
+// Once started (the countries' names may take a moment: up to 10 s for them).
+function applyLinkView(now) {
+	if (!linkView || !S.started) return;
+	if (!linkViewAt) linkViewAt = now;
+	const { see, az, dep } = linkView, drag = S.aimMode === 'drag';
+	let hit = null;
+	if (see) {
+		const f = fold(see);
+		hit = findMatches(see).find((it) => it.f === f || it.fa === f) || null;
+		if (!hit && !labels.length && now - linkViewAt < 10000) return;
+	}
+	linkView = null;
+	// Through the Earth: that exact spot on the far side, as a target named from the link (so with the
+	// compass, which a phone may only switch to in a moment, the arrow shows the way; seas, which Find
+	// doesn't list, work the same); faced at once when dragging.
+	if (az !== null && dep >= EARTH_FROM && (!hit || hit.kind === 'earth')) {
+		if (!S.globe) setGlobe(true);
+		setTarget({ kind: 'earth', key: see, name: see || 'The view from the link', v: farSide(az, dep) });
+		if (drag) { aimAnim = null; S.az = az; S.dep = dep; }
+		return;
+	}
+	if (hit) { pickTarget(hit); return; }
+	if (az === null) return;
+	if (drag) { aimAnim = null; S.az = az; S.dep = dep; }
+	else toast(`The link looks ${Math.round(az)}° ${point(az)}, ${Math.round(Math.abs(dep))}° ${dep >= 0 ? 'down' : 'up'}`, 9000);
+}
+
 // The ring on the target when it's on screen, or an arrow at the edge pointing the way to turn.
 const _t = new THREE.Vector3(), qCam = new THREE.Quaternion();
 function placeTarget() {
@@ -840,6 +925,7 @@ function frame(now) {
 		lastSky = now; skyPlace = S.place;
 		SKY.setTime(dateToDays(new Date()), S.place.lat, S.place.lon);
 	}
+	applyLinkView(now);
 	if (aimAnim) aimAnim(now);
 	updateCamera();
 	S.fade += (1 - S.fade) * Math.min(1, dt * 4);
@@ -890,4 +976,6 @@ window.__TTE = {
 	get aiming() { return !!aimAnim; },
 	targetInCamera() { const d = targetDir(); return d ? d.clone().applyQuaternion(SKY.camera.quaternion.clone().invert()).toArray() : null; },
 	targetUi() { return { chip: !$('targetChip').hidden, mark: !$('targetMark').hidden, arrow: !$('targetArrow').hidden, name: S.target && S.target.name }; },
+	viewLink, viewFromLink,
+	get linkView() { return linkView; },
 };
