@@ -69,6 +69,7 @@
     "Find the Sun, Moon, planets, stars, constellations, countries and oceans",
     "Hide the Earth to see the whole sky, including the half below the horizon",
     "Share a link to the view: the place and what you are looking at",
+    "Optional: the last week's earthquakes (magnitude 4.5 and above, from the USGS) inside the glass Earth at their true depth, with how long their waves took to reach you",
     "Phone compass and camera, or drag to look on a computer"
    ],
    "isPartOf": {
@@ -143,10 +144,18 @@
   },
   {
    "@type": "Question",
+   "name": "Can it show earthquakes?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Yes, if you turn them on: tap ⓘ and tick Show recent earthquakes. The last seven days' earthquakes of magnitude 4.5 and above, from the US Geological Survey's public list, then appear inside the glass Earth where they happened, each at its real depth. Put the circle on one and the card gives its strength, place and depth, how far it is from you through the Earth, and how long its waves took to reach you. The list is published some minutes after each earthquake, so it is a look back, not a warning."
+   }
+  },
+  {
+   "@type": "Question",
    "name": "Does it work without signal?",
    "acceptedAnswer": {
     "@type": "Answer",
-    "text": "Yes, apart from the place search. Open it once with a connection, and after that the sky and the glass Earth work without one. To keep it handy, add it to your home screen: in Safari tap Share, then Add to Home Screen; in Chrome, choose Install app or Add to Home screen from the menu."
+    "text": "Yes, apart from the place search and the earthquake list. Open it once with a connection, and after that the sky and the glass Earth work without one. To keep it handy, add it to your home screen: in Safari tap Share, then Add to Home Screen; in Chrome, choose Install app or Add to Home screen from the menu."
    }
   },
   {
@@ -154,7 +163,7 @@
    "name": "Does it send my location anywhere?",
    "acceptedAnswer": {
     "@type": "Answer",
-    "text": "No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the \"looking from\" search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder. If you share a view, the link goes only where you send it, with the place rounded to about a kilometre and no name for your GPS position or a street address."
+    "text": "No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the \"looking from\" search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder. If you turn on earthquakes, the page downloads the US Geological Survey's public list, the same for everyone, and your position is not sent. If you share a view, the link goes only where you send it, with the place rounded to about a kilometre and no name for your GPS position or a street address."
    }
   }
  ]
@@ -178,7 +187,7 @@
 		<button id="globeBtn" class="icon" type="button" aria-pressed="true" title="Hide the Earth to see the whole sky">Earth</button>
 		<button id="nightBtn" class="icon moon" type="button" aria-pressed="false" aria-label="Night mode" title="Night mode: show the night sky, even by day">☾</button>
 		<button id="camBtn" class="icon" type="button" aria-pressed="false" title="Camera on or off">Cam</button>
-		<button id="infoBtn" class="icon" type="button" aria-haspopup="dialog" title="How it works">ⓘ</button>
+		<button id="infoBtn" class="icon" type="button" aria-haspopup="dialog" aria-label="Settings and how it works" title="Settings and how it works">ⓘ</button>
 	</div>
 	<div class="aimRow">
 		<p id="aimText">…</p>
@@ -244,7 +253,12 @@
 <dialog id="about" class="sheet" aria-labelledby="aboutTitle">
 	<div class="inner">
 		<button class="close" type="button" aria-label="Close">✕</button>
-		<h2 id="aboutTitle">How it works</h2>
+		<h2 id="aboutTitle">Settings and how it works</h2>
+		<h3 class="first">Settings</h3>
+		<label class="opt" for="quakeOpt"><input type="checkbox" id="quakeOpt"> <span>Show recent earthquakes</span></label>
+		<p class="small optNote">The last seven days' earthquakes of magnitude 4.5 and above, inside the glass Earth at their true depth. While this is on, the list is downloaded from the US Geological Survey every few minutes.</p>
+		<p id="quakeStatus" class="small optNote" role="status" aria-live="polite"></p>
+		<h3>How it works</h3>
 		<p>Point the back of your phone anywhere and this page shows what lies that way. Above the horizon it is the sky as it is right now from where you are: the Sun, the Moon, the planets, the brighter stars, the constellations and the Milky Way.</p>
 		<p>Below the horizon, imagine the Earth were made of glass. Look down at your feet and you would see straight through it to the far side of the world, from underneath. The page draws the countries and oceans in that direction, through the planet. Look straight down and you see the exact opposite side of the world; tip the phone towards the horizon and the view sweeps closer to home.</p>
 		<h3>The sky</h3>
@@ -255,10 +269,13 @@
 		<p>You are seeing the far side from inside the Earth, so the map is the mirror image of the one you know, just as a sign reads backwards from behind a window. The names are written the right way round so you can read them.</p>
 		<h3>The glow</h3>
 		<p>The blue haze towards the edge of the view is the atmosphere, seen at a slant where your line of sight skims the far surface. Look steeply down and you will see faint orange rings: the Earth's liquid outer core and solid inner core, which your line of sight passes through on the way.</p>
+		<h3>Earthquakes</h3>
+		<p>Turn on <b>Show recent earthquakes</b>, at the top of this sheet, and the last seven days' earthquakes of magnitude 4.5 and above appear inside the glass Earth where they happened. Each dot sits at the earthquake's real depth, with a thin line up to the surface above it, so the deep ones, down to about 700 km, hang visibly below the map. Bigger dots are stronger earthquakes and brighter ones are more recent; one from the last hour pulses. Put the circle on a dot and the card gives its strength, place and depth, how far it is from you in a straight line through the Earth, and how long its waves took to reach you: the fast P waves first, then the slower S waves. More than about 11,500 km round the world from an earthquake, no S waves arrive directly, because they cannot cross the liquid outer core. Find lists the earthquakes too: type “earthquake”.</p>
+		<p>The list is the US Geological Survey's, which publishes each earthquake some minutes after it happens, so this is a look back, not a warning. Most are too far away, or too small, to feel where you are: only instruments notice them. The wave times are worked out from the ak135 model of the Earth and are good to a few seconds; from 100° to about 160° round the world the first wave is the faint one that bends round the core.</p>
 		<h3>Your privacy</h3>
-		<p>Your GPS position and the camera picture are used only on your phone and never leave it. Find searches only on your phone. When you search for a place to look from, the words you type are sent to Photon (OpenStreetMap data, run by komoot), or to Open-Meteo's place finder if Photon fails, and nothing else. A link that starts somewhere else carries that place after a #, which browsers keep to themselves rather than sending to the website. Share makes such a link: the place in it is rounded to about a kilometre, and your GPS position or a street address you searched for goes without its name.</p>
+		<p>Your GPS position and the camera picture are used only on your phone and never leave it. Find searches only on your phone. When you search for a place to look from, the words you type are sent to Photon (OpenStreetMap data, run by komoot), or to Open-Meteo's place finder if Photon fails, and nothing else. With earthquakes turned on, the page downloads the US Geological Survey's public list, the same list for everyone; your position is not sent. A link that starts somewhere else carries that place after a #, which browsers keep to themselves rather than sending to the website. Share makes such a link: the place in it is rounded to about a kilometre, and your GPS position or a street address you searched for goes without its name.</p>
 		<h3>How it's worked out</h3>
-		<p>The satellite picture is NASA's Blue Marble (public domain), and places come from Natural Earth's country outlines, the same as on <a href="https://whatsacross.com/">What's Across</a>. Your phone's compass is corrected from magnetic to true north with the World Magnetic Model 2025. The Earth is treated as a perfect sphere, and phone compasses are only good to a few degrees, so a far-away place can be a few hundred km off. The layers the line of sight passes through come from the Preliminary Reference Earth Model (Dziewonski and Anderson, 1981).</p>
+		<p>The satellite picture is NASA's Blue Marble (public domain), and places come from Natural Earth's country outlines, the same as on <a href="https://whatsacross.com/">What's Across</a>. Your phone's compass is corrected from magnetic to true north with the World Magnetic Model 2025. The Earth is treated as a perfect sphere, and phone compasses are only good to a few degrees, so a far-away place can be a few hundred km off. The layers the line of sight passes through come from the Preliminary Reference Earth Model (Dziewonski and Anderson, 1981). Earthquakes: the <a href="https://earthquake.usgs.gov/earthquakes/feed/">US Geological Survey's real-time feed</a> (public domain); wave times from the ak135 model (Kennett, Engdahl and Buland, 1995).</p>
 		<p>The planets come from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons. Star data: <a href="https://codeberg.org/astronexus/hyg">HYG database</a> (CC BY-SA 4.0). Constellation figures: <a href="https://github.com/ofrohn/d3-celestial">d3-celestial</a> (BSD-3). Constellation boundaries: IAU (Delporte 1930) via Roman (1987), CDS VI/42. Milky Way: <a href="https://svs.gsfc.nasa.gov/4851">NASA/Goddard Space Flight Center Scientific Visualization Studio</a>, Deep Star Maps 2020; Gaia DR2: ESA/Gaia/DPAC.</p>
 		<h3 id="faq">Questions</h3>
 		<!-- Keep these word for word the same as the FAQPage JSON-LD in <head> (page-test.js checks). -->
@@ -275,10 +292,12 @@
 			<p>Yes. Tap Find and start typing: the Sun, the Moon, the planets, the named stars, the constellations, the countries and the oceans are all there. Pick one and the view turns to it, or, with the compass, an arrow shows which way to point your phone. Countries are found straight through the Earth.</p>
 			<h4>Does it work on iPhone, Android and computers?</h4>
 			<p>Yes, in Safari, Chrome, Firefox or Edge. On a phone, tap Start and allow motion and location when asked; on an iPhone, hold the phone flat over the floor for a moment so the compass can settle. On a computer, or without a compass, drag to look around and scroll or pinch to zoom.</p>
+			<h4>Can it show earthquakes?</h4>
+			<p>Yes, if you turn them on: tap ⓘ and tick Show recent earthquakes. The last seven days' earthquakes of magnitude 4.5 and above, from the US Geological Survey's public list, then appear inside the glass Earth where they happened, each at its real depth. Put the circle on one and the card gives its strength, place and depth, how far it is from you through the Earth, and how long its waves took to reach you. The list is published some minutes after each earthquake, so it is a look back, not a warning.</p>
 			<h4>Does it work without signal?</h4>
-			<p>Yes, apart from the place search. Open it once with a connection, and after that the sky and the glass Earth work without one. To keep it handy, add it to your home screen: in Safari tap Share, then Add to Home Screen; in Chrome, choose Install app or Add to Home screen from the menu.</p>
+			<p>Yes, apart from the place search and the earthquake list. Open it once with a connection, and after that the sky and the glass Earth work without one. To keep it handy, add it to your home screen: in Safari tap Share, then Add to Home Screen; in Chrome, choose Install app or Add to Home screen from the menu.</p>
 			<h4>Does it send my location anywhere?</h4>
-			<p>No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the &quot;looking from&quot; search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder. If you share a view, the link goes only where you send it, with the place rounded to about a kilometre and no name for your GPS position or a street address.</p>
+			<p>No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the &quot;looking from&quot; search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder. If you turn on earthquakes, the page downloads the US Geological Survey's public list, the same for everyone, and your position is not sent. If you share a view, the link goes only where you send it, with the place rounded to about a kilometre and no name for your GPS position or a street address.</p>
 		</div>
 		<p class="note">Just for fun. More tools at <a href="https://games.adamwoodland.com/">Adam's Arcade</a>. Made by <a href="https://adamwoodland.com/">Adam Woodland</a>. Design, code and content developed with the assistance of AI (Anthropic Claude).</p>
 	</div>

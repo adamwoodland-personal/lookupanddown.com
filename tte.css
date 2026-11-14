@@ -36,6 +36,8 @@ body.night #cam.on { opacity: 0.32; }
    reticle's edge. */
 .pl.opp { color: var(--amber); font-size: 12px; line-height: 16px; padding-left: 30px; }
 .pl.opp::before { content: ""; position: absolute; left: 0; top: 1px; width: 14px; height: 14px; border: 2px solid var(--amber); border-radius: 50%; }
+/* An earthquake's magnitude, to the right of its dot (the earthquakes setting). */
+.pl.quake { font-size: 12px; line-height: 16px; font-weight: 700; color: #ffd2c9; letter-spacing: 0.01em; }
 /* The sky's names, as on orrery.live's night sky (sky.css); skyview.js measures them with these fonts. */
 .b-label, .s-label, .c-label, .k-label {
 	position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform;
@@ -112,6 +114,7 @@ body.night #cam.on { opacity: 0.32; }
 #card .name { margin-top: 2px; font-size: 24px; font-weight: 700; color: var(--amber); line-height: 1.15; }
 #card .detail { margin-top: 4px; font-family: var(--mono); font-size: 13px; color: var(--ink); line-height: 1.4; }
 #card.sky .name { font-size: 22px; }
+#card.quake .name { color: #ff9a8a; }
 #card .retry { width: auto; margin-top: 10px; padding: 8px 16px; border-color: var(--amber); color: #ffe3b5; }
 /* Share, top right of the card; the words flow round it. (Not called "share": ad blockers hide that.) */
 #viewLinkBtn { float: right; margin: -2px -6px 6px 10px; min-width: 0; padding: 5px 12px; }
@@ -144,6 +147,12 @@ dialog.sheet::backdrop { background: rgba(2, 5, 8, 0.72); }
 .sheet .small, .sheet .note { color: var(--muted); font-size: 13px; }
 .sheet .close { position: absolute; top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: transparent; cursor: pointer; }
 .sheet label { display: block; margin: 16px 0 6px; color: var(--muted); font-size: 13px; }
+/* A setting: a tick box with its name, and a grey note under it. */
+.sheet h3.first { margin-top: 0; }
+.sheet label.opt { display: flex; align-items: center; gap: 10px; margin: 8px 0 2px; color: var(--ink); font-size: 16px; font-weight: 600; cursor: pointer; }
+.sheet label.opt input { flex: none; width: 22px; height: 22px; margin: 0; accent-color: var(--cyan); cursor: pointer; }
+.sheet .optNote { margin: 2px 0 0 32px; }
+.sheet .optNote:empty { display: none; }
 .sheet input[type="search"] { width: 100%; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: #0c1a24; font-size: 16px; }
 .sheet input[type="search"]:focus { outline: 2px solid var(--cyan); outline-offset: 1px; }
 .srow { display: flex; gap: 8px; }

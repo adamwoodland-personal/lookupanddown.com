@@ -4,17 +4,19 @@
 
 How it works: the phone's compass and motion sensors give the direction it is pointing (corrected from magnetic to true north with the World Magnetic Model 2025); without them, or on a computer, you drag to look around. The sky is the same as orrery.live's night sky: planets from the VSOP87 planetary theory and the Moon from Meeus's lunar theory, both checked against JPL Horizons, and stars from the HYG catalogue. Below the horizon the Earth is drawn from the inside, from NASA's Blue Marble imagery and Natural Earth's country outlines; the far side appears mirror-image, as it would through glass. Looking straight down shows the exact opposite side of the world (the antipode). The Earth's layers come from the Preliminary Reference Earth Model. The camera can show behind the view.
 
-Privacy: everything is worked out on the phone. The location and the camera picture never leave it; there are no cookies or analytics. Only a place name typed into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder.
+Privacy: everything is worked out on the phone. The location and the camera picture never leave it; there are no cookies or analytics. Only a place name typed into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder. With the earthquakes setting turned on, the page downloads the US Geological Survey's public list, the same for everyone; the visitor's position is not sent.
 
 Features: a Find search for the Sun, Moon, planets, named stars, constellations, countries and oceans (the view turns to the pick, or an arrow shows which way to point the phone), an Earth button that hides the globe to show the whole sky, including the half below the horizon, and a Night mode that draws the night sky even by day (stars, constellations and the Milky Way where they really are; with the camera on, the picture is dimmed so they show over it), and a Share button on the card that sends a link to the place and to what the view is on (whoever opens it is turned to the same thing, where it is in the sky then; the place is rounded to about a kilometre, and a GPS position or searched street address is not named).
 
-Install: an installable app (PWA); once opened it works offline, apart from the place search.
+Earthquakes (a setting, off by default, at the top of the info sheet): the last seven days' earthquakes of magnitude 4.5 and above, from the US Geological Survey's real-time list, drawn inside the glass Earth where they happened, each dot at the earthquake's real depth with a thin line up to the surface above it. Bigger dots are stronger and brighter ones more recent. With the view on one, the card gives its magnitude, place and depth, the straight-line distance from the visitor through the Earth, and how long its waves took to arrive: the first P waves, then the slower S waves, or a note that no S waves arrive beyond about 104° of arc because the liquid outer core stops them. Wave times come from the ak135 Earth model. The list is published minutes after each earthquake, so this is a look back, not an early warning.
 
-Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sky, places.js for the place search, earth.js, geo.js, texture.js, orientation.js), three.js, MIT-licensed code, no build step, no backend.
+Install: an installable app (PWA); once opened it works offline, apart from the place search and the earthquake list.
+
+Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sky, places.js for the place search, quakes.js and quake-times.js for the earthquakes, earth.js, geo.js, texture.js, orientation.js), three.js, MIT-licensed code, no build step, no backend.
 
 ## Links
 
-- [Look Up and Down](https://lookupanddown.com/): the page itself, with how it works and a list of questions (the antipode, tonight's planets, the distance through the Earth) in its info sheet
+- [Look Up and Down](https://lookupanddown.com/): the page itself, with its settings, how it works and a list of questions (the antipode, tonight's planets, the distance through the Earth, earthquakes) in its info sheet
 
 ## Related
 

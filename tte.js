@@ -24,6 +24,7 @@
 import * as THREE from './lib/three.module.js';
 import * as E from './earth.js';
 import * as G from './geo.js';
+import * as Q from './quakes.js';
 import * as SKY from './skyview.js';
 import { dateToDays } from './guide-orbits.js';
 import { geocode } from './places.js';
@@ -95,6 +96,7 @@ const S = {
 	look: null,                   // { az, dep, fwd (scene frame), hit: {lat, lon, km, arcKm} | null }
 	ready: false, nogl: false, stream: null, started: false,
 	globe: true,                  // false: the globe hidden, for the full sky
+	quakes: false,                // the earthquakes setting (off unless the visitor turns it on)
 	target: null,                 // what Find is pointing to: { kind, key, name, v (Earth-fixed, for places on Earth) }
 };
 const src = new OrientationSource();
@@ -117,11 +119,13 @@ function setPlace(p) {
 	if (uniforms) uniforms.eye.value.copy(P);
 	if (anti) anti.v.copy(P).negate();
 	$('placeName').textContent = p.name;
+	quakeGeometry(); // each earthquake's direction, distance and wave times from here
 }
 
 // ---- Renderer -------------------------------------------------------------------------------------------
 const view = $('view');
 let renderer = null, uniforms = null, anti = null;
+let quakeDots = null, quakeStalks = null, quakeBuf = null; // the earthquakes setting's dots and depth lines
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, 1, 0.0005, 3);
 try {
@@ -172,11 +176,45 @@ if (renderer) {
 	};
 	shell(1 - 2891 / E.R, 0xff8a2a, 0.5, 1);   // outer core
 	shell(1 - 5150 / E.R, 0xffe2a0, 0.45, 2);    // inner core
+	// Earthquakes (a setting, see below): a dot at each one's true depth inside the glass, drawn over
+	// the map (no depth test, like the core), a fixed size on screen by magnitude, and a thin line
+	// from it up to the surface above, which is what shows the depth. Hidden until there is a list.
+	quakeBuf = { pos: new Float32Array(Q.MAX * 3), size: new Float32Array(Q.MAX), age: new Float32Array(Q.MAX), line: new Float32Array(Q.MAX * 6) };
+	const dotGeo = new THREE.BufferGeometry();
+	dotGeo.setAttribute('position', new THREE.BufferAttribute(quakeBuf.pos, 3));
+	dotGeo.setAttribute('size', new THREE.BufferAttribute(quakeBuf.size, 1));
+	dotGeo.setAttribute('age', new THREE.BufferAttribute(quakeBuf.age, 1));
+	dotGeo.setDrawRange(0, 0);
+	quakeDots = new THREE.Points(dotGeo, new THREE.ShaderMaterial({
+		uniforms: { fade: uniforms.fade, pr: { value: 1 }, pulse: { value: 0 } },
+		transparent: true, depthWrite: false, depthTest: false,
+		// age: 0 = now … 1 = a week old. One from the last hour (age < 1/168) swells and shrinks.
+		vertexShader: `attribute float size; attribute float age; uniform float pr; uniform float pulse; varying float vAge;
+			void main() { vAge = age; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+				gl_PointSize = size * pr * (1.0 + (1.0 - step(0.006, age)) * 0.35 * pulse); }`,
+		// A red ring with a pale centre; as bright as it gets for a day, then dimmer with age.
+		fragmentShader: `uniform float fade; varying float vAge;
+			void main() {
+				float r = length(gl_PointCoord - 0.5) * 2.0;
+				if (r > 1.0) discard;
+				float recent = 1.0 - smoothstep(0.14, 1.0, vAge);
+				float ring = smoothstep(0.55, 0.72, r) * (1.0 - smoothstep(0.86, 1.0, r));
+				float core = 1.0 - smoothstep(0.18, 0.5, r);
+				vec3 col = mix(vec3(1.0, 0.33, 0.27), vec3(1.0, 0.92, 0.82), core);
+				float a = max(ring, core) * mix(0.5, 1.0, recent) + 0.16 * (1.0 - smoothstep(0.5, 1.0, r));
+				gl_FragColor = vec4(col, a * fade);
+			}`,
+	}));
+	const lineGeo = new THREE.BufferGeometry();
+	lineGeo.setAttribute('position', new THREE.BufferAttribute(quakeBuf.line, 3));
+	lineGeo.setDrawRange(0, 0);
+	quakeStalks = new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0xff6a5a, transparent: true, opacity: 0.5, depthWrite: false, depthTest: false }));
+	for (const [o, order] of [[quakeStalks, 3], [quakeDots, 4]]) { o.renderOrder = order; o.frustumCulled = false; o.visible = false; scene.add(o); }
 }
 
 function resize() {
 	const w = innerWidth, h = innerHeight;
-	if (renderer) { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(w, h, false); SKY.setPixelRatio(renderer.getPixelRatio()); }
+	if (renderer) { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setSize(w, h, false); SKY.setPixelRatio(renderer.getPixelRatio()); quakeDots.material.uniforms.pr.value = renderer.getPixelRatio(); }
 	camera.aspect = w / h;
 	setFov();
 }
@@ -427,7 +465,7 @@ for (const sh of document.querySelectorAll('dialog.sheet')) {
 	if (c) c.addEventListener('click', () => closeSheet(sh));
 }
 $('intro').addEventListener('cancel', (e) => e.preventDefault());
-$('infoBtn').addEventListener('click', () => openSheet($('about')));
+$('infoBtn').addEventListener('click', () => { quakeStatus(); openSheet($('about')); });
 $('placeBtn').addEventListener('click', () => openSheet($('placeSheet')));
 $('gpsBtn').addEventListener('click', () => { askLocation(false); closeSheet($('placeSheet')); });
 $('findBtn').addEventListener('click', () => { openSheet($('findSheet')); $('findInput').select(); });
@@ -472,7 +510,8 @@ $('placeForm').addEventListener('submit', async (e) => {
 });
 
 // The globe on or off (off shows the full sky: below the horizon the dark sky beyond the far side
-// of the Earth, with its stars and names), and Night mode. Remembered in this browser only.
+// of the Earth, with its stars and names), Night mode, and the earthquakes setting. Remembered in
+// this browser only.
 const PREFS = 'lud-prefs-v1';
 // Each field is kept only if it is a boolean; anything else stored under the key (true, 1, "text",
 // [], a non-boolean field) is ignored.
@@ -482,6 +521,7 @@ try {
 	if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
 		if (typeof raw.globe === 'boolean') prefs.globe = raw.globe;
 		if (typeof raw.night === 'boolean') prefs.night = raw.night;
+		if (typeof raw.quakes === 'boolean') prefs.quakes = raw.quakes;
 	}
 } catch (e) { prefs = {}; }
 function savePrefs() { try { localStorage.setItem(PREFS, JSON.stringify(prefs)); } catch (e) { /* private mode: not kept */ } }
@@ -529,7 +569,10 @@ function buildFindIndex() {
 		seen.add(l.text);
 		items.push({ kind: 'earth', key: l.text, name: l.text, sub: l.kind === 'sea' ? 'ocean' : 'country or territory', v: l.v, rank: 2 });
 	}
-	for (const it of items) { it.f = fold(it.name); it.fa = it.also ? fold(it.also) : ''; }
+	// With the earthquakes setting on: each one, strongest first, found by "earthquake" or its place.
+	const now = Date.now();
+	for (const q of quakes) items.push({ kind: 'earth', key: 'quake:' + q.id, name: quakeName(q), sub: `${cap(q.place)} · ${Q.ago(now - q.time)}`, v: q.v, rank: 3 + (10 - q.mag) / 10, place: q.place });
+	for (const it of items) { it.f = fold(it.name); it.fa = it.also ? fold(it.also) : ''; it.fp = it.place ? fold(it.place) : ''; }
 	findHasEarth = labels.length > 0;
 	return items;
 }
@@ -539,7 +582,7 @@ function findMatches(q) {
 	if (!findIndex || (!findHasEarth && labels.length)) findIndex = buildFindIndex();
 	const scored = [];
 	for (const it of findIndex) {
-		const sc = it.f === f || it.fa === f ? 0 : it.f.startsWith(f) ? 1 : it.f.split(/[\s-]+/).some((w) => w.startsWith(f)) ? 2 : it.f.includes(f) ? 3 : -1;
+		const sc = it.f === f || it.fa === f ? 0 : it.f.startsWith(f) ? 1 : it.f.split(/[\s-]+/).some((w) => w.startsWith(f)) ? 2 : it.f.includes(f) ? 3 : it.fp && it.fp.includes(f) ? 4 : -1;
 		if (sc >= 0) scored.push([sc, it]);
 	}
 	scored.sort((a, b) => a[0] - b[0] || a[1].rank - b[1].rank || a[1].name.length - b[1].name.length);
@@ -605,6 +648,8 @@ function viewSubject() {
 	const L = S.look;
 	if (S.target) return { name: S.target.name, earth: S.target.kind === 'earth', d: targetDir() };
 	if (!L) return { name: '', earth: false, d: null };
+	const qk = quakeAt();
+	if (qk) return { name: quakeName(qk), earth: true, d: null };
 	if (S.globe && !!L.hit && L.dep >= EARTH_FROM) return { name: S.ready ? cap(G.whereIs(L.hit.lat, L.hit.lon).name) : '', earth: true, d: null };
 	return { name: SKY.describe(L.fwd).name, earth: false, d: null };
 }
@@ -641,9 +686,9 @@ function viewFromLink(hash = location.hash) {
 let linkView = viewFromLink(), linkViewAt = 0;
 // The far side in a direction from here (degrees; dep > 0, down), in Earth-fixed axes: as in
 // updateCamera, the line of sight meets it at P + t·w, t = −2·(P·w).
+const lookDir = (az, dep) => new THREE.Vector3(Math.cos(dep * DEG) * Math.sin(az * DEG), -Math.sin(dep * DEG), -Math.cos(dep * DEG) * Math.cos(az * DEG)).applyQuaternion(qBasis);
 function farSide(az, dep) {
-	const a = az * DEG, d = dep * DEG;
-	const w = new THREE.Vector3(Math.cos(d) * Math.sin(a), -Math.sin(d), -Math.cos(d) * Math.cos(a)).applyQuaternion(qBasis);
+	const w = lookDir(az, dep);
 	return w.multiplyScalar(-2 * w.dot(P)).add(P);
 }
 // Once started (the countries' names may take a moment: up to 10 s for them).
@@ -657,7 +702,20 @@ function applyLinkView(now) {
 		hit = findMatches(see).find((it) => it.f === f || it.fa === f) || null;
 		if (!hit && !labels.length && now - linkViewAt < 10000) return;
 	}
+	// A link to an earthquake ("Earthquake M 6.1"). With the setting on here, it is that earthquake if
+	// it is still on the list: the one of that name within 5° of the link's direction (several can
+	// share a magnitude), once the list has arrived. With it off, the direction still shows the way,
+	// and a toast says how to see the earthquakes themselves.
+	const quakeLink = /^Earthquake M \d/.test(see);
+	if (quakeLink && S.quakes && quakeBusy && now - linkViewAt < 10000) return;
 	linkView = null;
+	if (quakeLink && S.quakes && az !== null) {
+		const f = fold(see), w = lookDir(az, dep);
+		let best = null, ba = 5 * DEG;
+		for (const q of quakes) if (q.dir && fold(quakeName(q)) === f) { const a = q.dir.angleTo(w); if (a < ba) { ba = a; best = q; } }
+		if (best) { pickTarget({ kind: 'earth', key: 'quake:' + best.id, name: quakeName(best), v: best.v }); return; }
+	}
+	if (quakeLink && !S.quakes) toast('This link points at an earthquake. To see them, tap ⓘ and tick “Show recent earthquakes”', 8000);
 	// Through the Earth: that exact spot on the far side, as a target named from the link (so with the
 	// compass, which a phone may only switch to in a moment, the arrow shows the way; seas, which Find
 	// doesn't list, work the same); faced at once when dragging.
@@ -814,11 +872,136 @@ function loadWorld() {
 loadWorld();
 $('retryBtn').addEventListener('click', () => { if (!S.ready) { loadWorld(); readouts(); } });
 
+// ---- Earthquakes: a setting, off by default ------------------------------------------------------------------
+// The last 7 days' earthquakes of magnitude 4.5 and above, from the US Geological Survey's public
+// list (quakes.js), drawn inside the glass Earth where they happened: a dot at the true depth with
+// a thin line up to the surface above it. Bigger dots are stronger, brighter ones more recent, and
+// one from the last hour pulses. The card names the one under the reticle, with how long its waves
+// took to reach the place the view is from; Find lists them, strongest first.
+//
+// With the setting off, nothing is asked of the USGS at all. While it is on, the list is fetched
+// again every 5 minutes (the USGS asks for no more than once a minute), and only while the page is
+// showing. A list that fails to arrive leaves the last good one in place. The setting lives at the
+// top of the info sheet and is remembered with the other preferences.
+const QUAKE_EVERY = 5 * 60000;
+let quakes = [], quakesAt = 0, quakeError = false, quakeBusy = false, quakeSeq = 0, quakeTimer = 0, quakeHint = false;
+const quakeName = (q) => `Earthquake M ${q.mag.toFixed(1)}`;
+// Where each one is (Earth-fixed: v at its depth, s on the surface above), and from here: its
+// direction, the straight-line distance, the arc, and its waves' travel times. Then the dots.
+function quakeGeometry() {
+	const now = Date.now();
+	quakes.forEach((q, i) => {
+		if (!q.s) { q.s = vec(q.lat, q.lon); q.v = q.s.clone().multiplyScalar(1 - q.depth / E.R); q.px = Math.min(40, 9 + Math.max(0, q.mag - 4.5) * 7); }
+		const d = q.v.clone().sub(P);
+		q.km = d.length() * E.R;
+		q.dir = d.lengthSq() > 1e-10 ? d.normalize() : null;
+		q.arc = Q.arcDeg(S.place.lat, S.place.lon, q.lat, q.lon);
+		q.t = Q.travel(q.arc, q.depth);
+		if (!quakeBuf) return;
+		q.v.toArray(quakeBuf.pos, i * 3);
+		q.v.toArray(quakeBuf.line, i * 6); q.s.toArray(quakeBuf.line, i * 6 + 3);
+		quakeBuf.size[i] = q.px;
+		quakeBuf.age[i] = Math.min(1, Math.max(0, (now - q.time) / Q.WEEK));
+	});
+	if (!quakeDots) return;
+	for (const o of [quakeDots, quakeStalks]) for (const a of Object.values(o.geometry.attributes)) a.needsUpdate = true;
+	quakeDots.geometry.setDrawRange(0, quakes.length);
+	quakeStalks.geometry.setDrawRange(0, quakes.length * 2);
+}
+async function loadQuakes() {
+	if (quakeBusy || !S.quakes) return;
+	const mine = ++quakeSeq;
+	quakeBusy = true;
+	quakeStatus();
+	const ctl = typeof AbortController === 'function' ? new AbortController() : null, kill = ctl && setTimeout(() => ctl.abort(), 20000);
+	try {
+		const r = await fetch(Q.FEED, { credentials: 'omit', signal: ctl ? ctl.signal : undefined });
+		if (!r.ok) throw new Error(r.status);
+		const list = Q.parseFeed(await r.json());
+		if (mine !== quakeSeq || !S.quakes) return; // turned off meanwhile
+		quakes = list; quakesAt = Date.now(); quakeError = false;
+		quakeGeometry();
+		findIndex = null;
+	} catch (e) {
+		if (mine !== quakeSeq || !S.quakes) return;
+		quakeError = true;
+	} finally {
+		if (kill) clearTimeout(kill);
+		if (mine === quakeSeq) quakeBusy = false;
+		quakeStatus();
+	}
+}
+function setQuakes(on, byUser) {
+	S.quakes = !!on;
+	prefs.quakes = S.quakes;
+	savePrefs();
+	$('quakeOpt').checked = S.quakes;
+	clearInterval(quakeTimer);
+	quakeTimer = 0;
+	if (S.quakes) {
+		if (byUser && !S.globe) setGlobe(true); // they are inside the Earth
+		loadQuakes();
+		quakeTimer = setInterval(() => { if (document.visibilityState === 'visible') loadQuakes(); }, QUAKE_EVERY);
+	} else {
+		quakeSeq++; // a list still on its way is dropped
+		quakeBusy = false; quakes = []; quakesAt = 0; quakeError = false;
+		quakeGeometry();
+		findIndex = null;
+		if (S.target && String(S.target.key).startsWith('quake:')) setTarget(null);
+	}
+	quakeStatus();
+}
+// The line under the setting: how many, the strongest, and how fresh the list is.
+function quakeStatus() {
+	const el = $('quakeStatus'), now = Date.now();
+	if (!S.quakes) { el.textContent = ''; return; }
+	if (!quakes.length) {
+		el.textContent = quakeBusy ? 'Getting the list…' : quakeError ? 'The list didn’t arrive. Check the connection: it will be tried again in a few minutes.' : quakesAt ? 'No earthquakes of magnitude 4.5 or more in the last 7 days.' : '';
+		return;
+	}
+	const top = quakes[0];
+	el.textContent = `${quakes.length} earthquakes in the last 7 days. The strongest: magnitude ${top.mag.toFixed(1)}, ${top.place}, ${Q.ago(now - top.time)}. List updated ${Q.ago(now - quakesAt)}`
+		+ (quakeError ? ' (the latest update didn’t arrive: it will be tried again).' : '.');
+}
+$('quakeOpt').addEventListener('change', (e) => { quakeHint = e.target.checked; setQuakes(e.target.checked, true); });
+// The setting is turned on inside the info sheet, which covers the view: the hint waits for it to close.
+$('about').addEventListener('close', () => {
+	if (quakeHint && S.quakes) toast('Earthquakes are on: point down to see them, or tap Find and type “earthquake”', 6000);
+	quakeHint = false;
+});
+// A page coming back from the background catches up if its list has gone stale.
+document.addEventListener('visibilitychange', () => { if (S.quakes && document.visibilityState === 'visible' && Date.now() - quakesAt > QUAKE_EVERY) loadQuakes(); });
+// The earthquake the reticle is on: within 3° (scaled with the zoom), the nearest, with a stronger
+// one winning over a weaker one right beside it. Only below the horizon, with the Earth showing.
+function quakeAt() {
+	const L = S.look;
+	if (!S.quakes || !S.globe || !quakes.length || !L || L.dep <= 0) return null;
+	const tol = 3 * camera.fov / 67;
+	let best = null, bs = Infinity;
+	for (const q of quakes) {
+		if (!q.dir) continue;
+		const a = Math.acos(Math.max(-1, Math.min(1, fwd.dot(q.dir)))) / DEG;
+		if (a > tol) continue;
+		const s = a / tol - 0.15 * (q.mag - 4.5);
+		if (s < bs) { bs = s; best = q; }
+	}
+	return best;
+}
+// Who the waves reached: "you" for a GPS position, else the place the view is from.
+const whoHere = () => (S.place.source === 'gps' ? 'you' : S.place.name.length <= 24 ? S.place.name : 'this place');
+function quakeCard(q) {
+	const now = Date.now(), who = whoHere();
+	$('cKicker').textContent = `Earthquake · ${Q.ago(now - q.time)}`;
+	$('cName').textContent = `Magnitude ${q.mag.toFixed(1)}`;
+	$('cDetail').textContent = `${cap(q.place)}, ${q.depth < 1 ? 'at the surface' : `${nf(q.depth)} km deep`}, ${nf(q.km)} km from ${who} in a straight line. ${Q.waves(q.t, (now - q.time) / 1000, who)}`.trim();
+}
+setQuakes(prefs.quakes === true, false);
+
 // Names. All of them share one declutter (skyview.js's claim grid): the top bar and the card are
 // taken first, then the sky's bodies and compass points, then the globe's names (the
-// opposite-side marker, which may sit on the reticle, then countries and oceans, biggest first),
-// then the sky's stars and constellations. Countries only appear where the globe is solid: more
-// than ~1,600 km away and drawn more than 22 px across.
+// opposite-side marker, which may sit on the reticle, then the strongest earthquakes in view, then
+// countries and oceans, biggest first), then the sky's stars and constellations. Countries only
+// appear where the globe is solid: more than ~1,600 km away and drawn more than 22 px across.
 const pool = [], labelBox = $('labels');
 function labelEl(i) {
 	if (!pool[i]) { const d = document.createElement('div'); d.className = 'pl'; labelBox.append(d); pool[i] = { el: d, text: '', cls: '' }; }
@@ -826,14 +1009,51 @@ function labelEl(i) {
 }
 const tmp = new THREE.Vector3(), camSpace = new THREE.Vector3();
 let nEarth = 0;
+// The magnitudes of the strongest earthquakes in view (8 at most), each to the right of its dot.
+function placeQuakeLabels(w, h) {
+	if (!S.quakes || !S.globe) return;
+	// Strongest first. Each dot in view (60 at most) takes its own room, then its magnitude if there
+	// is room beside it: so a weaker one's magnitude, and the countries' names after them, are never
+	// written over a stronger one's dot, while in a tight cluster the strongest still get theirs.
+	let n = 0, seen = 0;
+	for (const q of quakes) {
+		if (seen >= 60) break;
+		camSpace.copy(q.v).applyMatrix4(camera.matrixWorldInverse);
+		if (camSpace.z > -0.001) continue;
+		tmp.copy(q.v).project(camera);
+		const x = (tmp.x + 1) / 2 * w, y = (1 - tmp.y) / 2 * h;
+		if (x < 0 || x > w || y < 0 || y > h) continue;
+		seen++;
+		SKY.claim(x, y, Math.max(2, q.px - 6), Math.max(2, q.px - 2)); // (claim adds 3 px each side, 1 above and below)
+		if (n >= 8 || nEarth >= 32) continue;
+		// To the right of the dot, or to its left if the right is taken. (What Find picked has a ring
+		// round it: the magnitude goes outside the ring.)
+		const text = `M${q.mag.toFixed(1)}`, bw = text.length * 7.6 + 4, bh = 16, gap = S.target && S.target.key === 'quake:' + q.id ? 26 : q.px / 2 + 5;
+		if (y - bh / 2 < 0 || y + bh / 2 > h) continue;
+		let left = x + gap;
+		if (left + bw > w - 4 || !SKY.claim(left + bw / 2, y, bw, bh)) {
+			left = x - gap - bw;
+			if (left < 4 || !SKY.claim(left + bw / 2, y, bw, bh)) continue;
+		}
+		const p = labelEl(nEarth++);
+		if (p.text !== text) { p.el.textContent = text; p.text = text; }
+		if (p.cls !== 'pl quake') { p.el.className = 'pl quake'; p.cls = 'pl quake'; }
+		p.el.style.transform = `translate(${left.toFixed(1)}px, ${(y - bh / 2).toFixed(1)}px)`;
+		p.el.style.opacity = String(Math.min(1, S.fade * 1.2));
+		p.el.hidden = false;
+		n++;
+	}
+}
 function placeEarthLabels() {
 	const w = innerWidth, h = innerHeight, focal = h / (2 * Math.tan(camera.fov * DEG / 2));
 	nEarth = 0;
 	const list = !labels.length || !S.globe ? [] : anti ? [anti, ...labels] : labels;
 	let reticleTaken = false;
+	// After the opposite-side marker: the reticle, then the earthquakes, then everything else.
+	const takeReticle = () => { SKY.claim(w / 2, h / 2, 48, 48); reticleTaken = true; placeQuakeLabels(w, h); };
 	for (const l of list) {
 		if (nEarth >= 32) break;
-		if (!reticleTaken && l !== anti) { SKY.claim(w / 2, h / 2, 48, 48); reticleTaken = true; }
+		if (!reticleTaken && l !== anti) takeReticle();
 		const d = l.v.distanceTo(P);
 		if (d < 0.25) continue;
 		camSpace.copy(l.v).applyMatrix4(camera.matrixWorldInverse);
@@ -857,7 +1077,7 @@ function placeEarthLabels() {
 		p.el.style.opacity = String(Math.min(1, S.fade * 1.2));
 		p.el.hidden = false;
 	}
-	if (!reticleTaken) SKY.claim(w / 2, h / 2, 48, 48);
+	if (!reticleTaken) takeReticle();
 	for (let i = nEarth; i < pool.length; i++) pool[i].el.hidden = true;
 }
 function placeLabels() {
@@ -870,7 +1090,8 @@ function placeLabels() {
 
 // ---- Readouts ---------------------------------------------------------------------------------------------
 // The card names what is under the reticle: in the sky (a body, a bright star or the
-// constellation), or, from 2° below the horizon, the place on the far side of the Earth.
+// constellation), or, from 2° below the horizon, the place on the far side of the Earth; with the
+// earthquakes setting on, an earthquake the reticle is on comes before either.
 function readouts() {
 	const L = S.look;
 	if (!L) return;
@@ -881,9 +1102,11 @@ function readouts() {
 	const showCal = src.calibrating || (src.accuracy !== null && src.accuracy > 25 && src.status === 'ok');
 	cal.hidden = !showCal;
 	if (showCal) cal.textContent = src.calibrating ? 'Settling the compass: hold the phone flat over the floor for a moment.' : 'The compass is unsure here: move the phone in a figure of eight, away from metal.';
-	const card = $('card'), earth = S.globe && !!L.hit && L.dep >= EARTH_FROM;
-	card.classList.toggle('sky', !earth);
-	$('retryBtn').hidden = !(earth && S.worldError && !S.ready);
+	const card = $('card'), earth = S.globe && !!L.hit && L.dep >= EARTH_FROM, qk = quakeAt();
+	card.classList.toggle('quake', !!qk);
+	card.classList.toggle('sky', !earth && !qk);
+	$('retryBtn').hidden = !(earth && S.worldError && !S.ready) || !!qk;
+	if (qk) { $('cName').style.color = ''; quakeCard(qk); return; }
 	if (!earth) {
 		const d = SKY.describe(L.fwd);
 		$('cKicker').textContent = d.kicker;
@@ -917,10 +1140,18 @@ function readouts() {
 // ---- The frame loop -----------------------------------------------------------------------------------------
 // The sky is worked out for now once a second (and at once when the place changes): the
 // stars move a quarter of a degree a minute, the Moon about half that against them.
-let lastT = performance.now(), lastDom = 0, lastSky = -1e9, skyPlace = null;
+let lastT = performance.now(), lastDom = 0, lastSky = -1e9, skyPlace = null, lastQuakeAge = 0;
+const STILL = matchMedia('(prefers-reduced-motion: reduce)');
 function frame(now) {
 	const dt = Math.min((now - lastT) / 1000, 0.1);
 	lastT = now;
+	// The earthquakes: shown while there is a list; their ages (brightness, the pulse) once a minute.
+	if (S.quakes && now - lastQuakeAge > 60000) { lastQuakeAge = now; quakeGeometry(); }
+	if (quakeDots) {
+		quakeDots.visible = quakeStalks.visible = S.quakes && quakes.length > 0;
+		quakeDots.material.uniforms.pulse.value = STILL.matches ? 0 : 0.5 + 0.5 * Math.sin(now / 300);
+		quakeStalks.material.opacity = 0.5 * S.fade;
+	}
 	if (now - lastSky > 1000 || skyPlace !== S.place) {
 		lastSky = now; skyPlace = S.place;
 		SKY.setTime(dateToDays(new Date()), S.place.lat, S.place.lon);
@@ -978,4 +1209,9 @@ window.__TTE = {
 	targetUi() { return { chip: !$('targetChip').hidden, mark: !$('targetMark').hidden, arrow: !$('targetArrow').hidden, name: S.target && S.target.name }; },
 	viewLink, viewFromLink,
 	get linkView() { return linkView; },
+	setQuakes: (on) => setQuakes(on, true),
+	loadQuakes,
+	get quakes() { return quakes.map((q) => ({ id: q.id, mag: q.mag, lat: q.lat, lon: q.lon, depth: q.depth, time: q.time, place: q.place, km: q.km, arc: q.arc, t: q.t, dir: q.dir && q.dir.toArray(), r: q.v.length() })); },
+	get quakeState() { return { on: S.quakes, n: quakes.length, at: quakesAt, error: quakeError, busy: quakeBusy, shown: !!quakeDots && quakeDots.visible, drawn: quakeDots ? quakeDots.geometry.drawRange.count : 0 }; },
+	quakeAt: () => { const q = quakeAt(); return q ? q.id : null; },
 };

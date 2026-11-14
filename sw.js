@@ -3,10 +3,11 @@
 //  - Code, data and navigations: NETWORK-FIRST, cache fallback. Everything the page needs is
 //    precached (the code, three.js, the 3.7 MB country map, the Earth imagery and the Milky Way),
 //    so the sky and the glass Earth both work offline once the page has been opened. Only the
-//    place search (Photon, Open-Meteo) needs a connection; cross-origin requests aren't touched.
+//    place search (Photon, Open-Meteo) and the earthquakes setting's list (USGS) need a
+//    connection; cross-origin requests aren't touched.
 //  - Images, and the two pictures the page fetch()es (destination ""): CACHE-FIRST.
 //  - Bump CACHE on every deploy that changes a precached file.
-const CACHE = 'lud-v4';
+const CACHE = 'lud-v5';
 const CORE = [
 	'/',
 	'/index.html',
@@ -16,6 +17,8 @@ const CORE = [
 	'/places.js',
 	'/earth.js',
 	'/geo.js',
+	'/quakes.js',
+	'/quake-times.js',
 	'/texture.js',
 	'/orientation.js',
 	'/guide-orbits.js',
