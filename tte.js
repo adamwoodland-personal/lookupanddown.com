@@ -881,15 +881,28 @@ $('retryBtn').addEventListener('click', () => { if (!S.ready) { loadWorld(); rea
 //
 // With the setting off, nothing is asked of the USGS at all. While it is on, the list is fetched
 // again every 5 minutes (the USGS asks for no more than once a minute), and only while the page is
-// showing. A list that fails to arrive leaves the last good one in place. The setting lives at the
-// top of the info sheet and is remembered with the other preferences.
+// showing. A list that fails to arrive leaves the last good one in place, but never past its 7 days:
+// whenever the dots are redrawn (at least once a minute), any earthquake now more than 7 days old is
+// dropped (Q.recent), and the status line gives the time of the last update that did arrive. The
+// setting lives at the top of the info sheet and is remembered with the other preferences.
 const QUAKE_EVERY = 5 * 60000;
 let quakes = [], quakesAt = 0, quakeError = false, quakeBusy = false, quakeSeq = 0, quakeTimer = 0, quakeHint = false;
 const quakeName = (q) => `Earthquake M ${q.mag.toFixed(1)}`;
+// Only the last 7 days (see above): drops the older ones, and with them anything that points at one
+// (Find's list, a marked target). True when any went.
+function pruneQuakes(now = Date.now()) {
+	const keep = Q.recent(quakes, now);
+	if (keep.length === quakes.length) return false;
+	quakes = keep;
+	findIndex = null;
+	if (S.target && String(S.target.key).startsWith('quake:') && !quakes.some((q) => S.target.key === 'quake:' + q.id)) setTarget(null);
+	return true;
+}
 // Where each one is (Earth-fixed: v at its depth, s on the surface above), and from here: its
 // direction, the straight-line distance, the arc, and its waves' travel times. Then the dots.
 function quakeGeometry() {
 	const now = Date.now();
+	if (pruneQuakes(now)) quakeStatus();
 	quakes.forEach((q, i) => {
 		if (!q.s) { q.s = vec(q.lat, q.lon); q.v = q.s.clone().multiplyScalar(1 - q.depth / E.R); q.px = Math.min(40, 9 + Math.max(0, q.mag - 4.5) * 7); }
 		const d = q.v.clone().sub(P);
@@ -951,17 +964,20 @@ function setQuakes(on, byUser) {
 	}
 	quakeStatus();
 }
-// The line under the setting: how many, the strongest, and how fresh the list is.
+// The line under the setting: how many, the strongest, and when the list last arrived.
 function quakeStatus() {
 	const el = $('quakeStatus'), now = Date.now();
 	if (!S.quakes) { el.textContent = ''; return; }
+	if (pruneQuakes(now)) quakeGeometry(); // (the dots too)
+	const updated = `List updated ${Q.ago(now - quakesAt)}` + (quakeError ? ' (the latest update didn’t arrive: it will be tried again).' : '.');
 	if (!quakes.length) {
-		el.textContent = quakeBusy ? 'Getting the list…' : quakeError ? 'The list didn’t arrive. Check the connection: it will be tried again in a few minutes.' : quakesAt ? 'No earthquakes of magnitude 4.5 or more in the last 7 days.' : '';
+		el.textContent = quakeBusy && !quakesAt ? 'Getting the list…'
+			: quakesAt ? `No earthquakes of magnitude 4.5 or more in the last 7 days. ${updated}`
+			: quakeError ? 'The list didn’t arrive. Check the connection: it will be tried again in a few minutes.' : '';
 		return;
 	}
 	const top = quakes[0];
-	el.textContent = `${quakes.length} earthquakes in the last 7 days. The strongest: magnitude ${top.mag.toFixed(1)}, ${top.place}, ${Q.ago(now - top.time)}. List updated ${Q.ago(now - quakesAt)}`
-		+ (quakeError ? ' (the latest update didn’t arrive: it will be tried again).' : '.');
+	el.textContent = `${quakes.length} earthquakes in the last 7 days. The strongest: magnitude ${top.mag.toFixed(1)}, ${top.place}, ${Q.ago(now - top.time)}. ${updated}`;
 }
 $('quakeOpt').addEventListener('change', (e) => { quakeHint = e.target.checked; setQuakes(e.target.checked, true); });
 // The setting is turned on inside the info sheet, which covers the view: the hint waits for it to close.

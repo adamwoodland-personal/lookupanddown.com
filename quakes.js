@@ -12,7 +12,10 @@
 // Wave times come from quake-times.js: the first P-type arrival (P, the diffracted P that creeps
 // round the core, or the core phases PKP and PKIKP) and the direct S wave, by distance and depth,
 // from the ak135 model of the Earth. Past about 104° of arc there is no direct S wave: S waves
-// cannot cross the liquid outer core.
+// cannot cross the liquid outer core. (Converted waves such as SKS, which cross the core as P waves
+// and turn back into S waves, do arrive there; the table doesn't hold them, and the card says "no
+// direct S wave", not "no S waves".) The times are the model's, a one-dimensional average Earth, so
+// the card gives them as estimates ("about").
 import { DEPTHS, STEP, P, S } from './quake-times.js';
 
 export const FEED = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson';
@@ -46,6 +49,11 @@ export function parseFeed(json, now = Date.now(), max = MAX) {
 	return out.slice(0, max);
 }
 
+// Those still inside the rolling 7 days at `now`. A failed update keeps the last list, so a list
+// that has stopped updating would otherwise go on showing earthquakes older than the 7 days it
+// promises; the page applies this whenever it redraws the dots.
+export const recent = (list, now = Date.now()) => list.filter((q) => q.time >= now - WEEK);
+
 // Degrees of arc between two places.
 export function arcDeg(lat1, lon1, lat2, lon2) {
 	const f1 = lat1 * DEG, f2 = lat2 * DEG, dl = (lon2 - lon1) * DEG;
@@ -74,7 +82,7 @@ function lookup(table, dist, depth) {
 	return a + (b - a) * g;
 }
 // Seconds for an earthquake's waves to reach a place distDeg of arc away, from depthKm down:
-// { p: the first waves, s: the S waves, or null where the outer core stops them }.
+// { p: the first waves, s: the direct S wave, or null where the outer core stops it }.
 export function travel(distDeg, depthKm) {
 	return { p: lookup(P, distDeg, depthKm), s: lookup(S, distDeg, depthKm) };
 }
@@ -96,16 +104,16 @@ export function ago(ms) {
 	return `${Math.round(h / 24)} days ago`;
 }
 
-// The sentence about the waves, for a place `who` ("you", "Brisbane"): how long they took, or,
-// for the few minutes after an earthquake while they are still on their way, how long is left.
-// elapsed: seconds since the earthquake.
+// The sentence about the waves, for a place `who` ("you", "Brisbane"): about how long they took,
+// or, for the few minutes after an earthquake while they are still on their way, how long is left.
+// Every time is the model's estimate, so each says "about". elapsed: seconds since the earthquake.
 export function waves(t, elapsed, who) {
 	if (t.p === null) return '';
 	if (elapsed < t.p) {
 		const s = t.s !== null ? `, the slower S waves in about ${dur(t.s - elapsed)}` : '';
 		return `Its first waves reach ${who} in about ${dur(t.p - elapsed)}${s}.`;
 	}
-	if (t.s === null) return `Its first waves took ${dur(t.p)} to reach ${who}. No S waves come this far: the liquid outer core stops them.`;
-	if (elapsed < t.s) return `Its first waves took ${dur(t.p)} to reach ${who}; the slower S waves arrive in about ${dur(t.s - elapsed)}.`;
-	return `Its first waves took ${dur(t.p)} to reach ${who}, the slower S waves ${dur(t.s)}.`;
+	if (t.s === null) return `Its first waves took about ${dur(t.p)} to reach ${who}. In this model no direct S wave comes this far: the liquid outer core stops it.`;
+	if (elapsed < t.s) return `Its first waves took about ${dur(t.p)} to reach ${who}; the slower S waves arrive in about ${dur(t.s - elapsed)}.`;
+	return `Its first waves took about ${dur(t.p)} to reach ${who}, the slower S waves about ${dur(t.s)}.`;
 }
