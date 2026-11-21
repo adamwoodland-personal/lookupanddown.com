@@ -22,6 +22,7 @@ Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sk
 
 - [orrery.live night sky](https://orrery.live/night-sky/): the sky part on its own, with tonight's planets and a time slider
 - [What's Across](https://whatsacross.com/): what lies across the ocean from any coastline, from the same country data
+- [Scan the Horizon](https://scanthehorizon.app/): names the hills, mountains, towns and islands on your horizon, with their distances, by the same author
 - [Adam's Arcade](https://games.adamwoodland.com/): all of the author's free browser games and tools
 - [Adam Woodland](https://adamwoodland.com/): the author, an OT/ICS cybersecurity consultant; this site is a side project
 

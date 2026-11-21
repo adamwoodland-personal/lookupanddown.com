@@ -7,7 +7,7 @@
 //    connection; cross-origin requests aren't touched.
 //  - Images, and the two pictures the page fetch()es (destination ""): CACHE-FIRST.
 //  - Bump CACHE on every deploy that changes a precached file.
-const CACHE = 'lud-v6';
+const CACHE = 'lud-v7';
 const CORE = [
 	'/',
 	'/index.html',
