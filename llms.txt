@@ -16,7 +16,8 @@ Technical: static files only (index.html, tte.css, tte.js, skyview.js for the sk
 
 ## Links
 
-- [Look Up and Down](https://lookupanddown.com/): the page itself, with its settings, how it works and a list of questions (the antipode, tonight's planets, the distance through the Earth, earthquakes) in its info sheet
+- [Look Up and Down](https://lookupanddown.com/): the page itself, with its settings, how it works and a list of questions (the antipode, whether you could dig to China, tonight's planets, the distance through the Earth, earthquakes) in its info sheet
+- [What is on the other side of the world?](https://lookupanddown.com/antipodes/): the antipodes of 32 cities and what is there (a country, or the sea and the nearest land), worked out from the page's own map; why you can't dig to China from the United States (every part of the lower 48 states is opposite the Indian Ocean); and how rare land opposite land is (about 13% of land)
 
 ## Related
 

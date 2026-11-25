@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Look Up and Down: night sky above, the other side of the world below</title>
+<title>Look Up and Down: stars above, the other side of the world below</title>
 <meta name="description" content="Point your phone up for the planets and stars above you, or down to see straight through the Earth to the other side of the world. Free, in the browser.">
 <link rel="canonical" href="https://lookupanddown.com/">
 <meta name="referrer" content="no-referrer">
@@ -12,7 +12,7 @@
 <meta property="og:site_name" content="Look Up and Down">
 <meta property="og:title" content="Look Up and Down: the sky above you, the world beneath your feet">
 <meta property="og:description" content="Point your phone up for the planets and stars, or down to see straight through the Earth to the other side of the world.">
-<meta property="og:image" content="https://lookupanddown.com/og-image.png">
+<meta property="og:image" content="https://lookupanddown.com/og-image.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The night sky above the horizon, with the Milky Way, and the far side of the world seen through a glass Earth below it">
@@ -20,14 +20,14 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Look Up and Down: the sky above you, the world beneath your feet">
 <meta name="twitter:description" content="Point your phone up for the planets and stars, or down to see straight through the Earth to the other side of the world.">
-<meta name="twitter:image" content="https://lookupanddown.com/og-image.png">
+<meta name="twitter:image" content="https://lookupanddown.com/og-image.jpg">
 <meta name="theme-color" content="#05080c">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-title" content="Up and Down">
 <link rel="stylesheet" href="tte.css">
-<script src="lib/topojson-client.min.js"></script>
+<script src="lib/topojson-client.min.js" defer></script>
 <script type="module" src="tte.js"></script>
 <script type="application/ld+json">
 {
@@ -59,8 +59,8 @@
     "price": "0",
     "priceCurrency": "USD"
    },
-   "image": "https://lookupanddown.com/og-image.png",
-   "screenshot": "https://lookupanddown.com/og-image.png",
+   "image": "https://lookupanddown.com/og-image.jpg",
+   "screenshot": "https://lookupanddown.com/og-image.jpg",
    "featureList": [
     "The sky for your place and time: the Sun, the Moon and its phase, the planets, named stars, constellations and the Milky Way",
     "See through the Earth to the other side of the world, with countries and oceans named",
@@ -99,7 +99,15 @@
    "name": "What is on the other side of the world from me?",
    "acceptedAnswer": {
     "@type": "Answer",
-    "text": "Point your phone straight down: the place in the middle of the view is the exact opposite side of the world from where you are, called the antipode. For most places it is sea. From Brisbane it is the Atlantic Ocean, about 880 km west of the Canary Islands; from London it is the Pacific, about 220 km from New Zealand's Antipodes Islands; from Madrid it is New Zealand itself."
+    "text": "Point your phone straight down: the place in the middle of the view is the exact opposite side of the world from where you are, called the antipode. For most places it is sea. From Brisbane it is the Atlantic Ocean, about 870 km west of the Canary Islands; from London it is the Pacific, about 210 km from New Zealand's Antipodes Islands; from Madrid it is New Zealand itself. The other side of the world from 32 cities lists more."
+   }
+  },
+  {
+   "@type": "Question",
+   "name": "Could you dig a hole to China?",
+   "acceptedAnswer": {
+    "@type": "Answer",
+    "text": "Not from the United States: every part of the lower 48 states has the Indian Ocean on the other side. To come out in China you would have to start in Argentina, which is opposite Beijing, Shanghai and Hong Kong. Only about one-eighth of the world's land has land on the other side."
    }
   },
   {
@@ -207,10 +215,10 @@
 
 <p id="toast" role="status" aria-live="polite"></p>
 
-<dialog id="intro" class="sheet" aria-labelledby="introTitle">
+<dialog id="intro" class="sheet" aria-labelledby="introTitle" open>
 	<div class="inner">
-		<h1 id="introTitle">Look Up and Down</h1>
-		<p class="lead">Point your phone up to see the planets, stars and constellations above you. Point it down and see straight through the Earth to the other side of the world, as if the planet were glass.</p>
+		<h1 id="introTitle">Look Up and Down <span class="tag">The sky above you, the world beneath your feet</span></h1>
+		<p class="lead">Point your phone up to see the planets, stars and constellations above you. Point it down and see straight through the Earth to the other side of the world, as if the planet were glass. Straight down is the exact opposite side of the world: your antipode.</p>
 		<p id="introHint" class="hint">On an iPhone, hold the phone flat over the floor for a moment first, so the compass can settle.</p>
 		<button id="startBtn" class="go" type="button" autofocus>Start looking</button>
 		<button id="startNoCam" class="plain" type="button">Start without the camera</button>
@@ -281,7 +289,9 @@
 		<!-- Keep these word for word the same as the FAQPage JSON-LD in <head> (page-test.js checks). -->
 		<div class="faq">
 			<h4>What is on the other side of the world from me?</h4>
-			<p>Point your phone straight down: the place in the middle of the view is the exact opposite side of the world from where you are, called the antipode. For most places it is sea. From Brisbane it is the Atlantic Ocean, about 880 km west of the Canary Islands; from London it is the Pacific, about 220 km from New Zealand's Antipodes Islands; from Madrid it is New Zealand itself.</p>
+			<p>Point your phone straight down: the place in the middle of the view is the exact opposite side of the world from where you are, called the antipode. For most places it is sea. From Brisbane it is the Atlantic Ocean, about 870 km west of the Canary Islands; from London it is the Pacific, about 210 km from New Zealand's Antipodes Islands; from Madrid it is New Zealand itself. <a href="/antipodes/">The other side of the world from 32 cities</a> lists more.</p>
+			<h4>Could you dig a hole to China?</h4>
+			<p>Not from the United States: every part of the lower 48 states has the Indian Ocean on the other side. To come out in China you would have to start in Argentina, which is opposite Beijing, Shanghai and Hong Kong. Only about one-eighth of the world's land has land on the other side.</p>
 			<h4>What planets can I see tonight?</h4>
 			<p>Point your phone up. The Sun, the Moon and the planets are shown and named where they are in your sky right now, with the brighter stars, the constellations and the Milky Way. By day the sky is blue and the stars are hidden, as they really are, unless you turn on Night mode (the ☾ button), which draws the night sky even in the daytime. For tonight's planets with rising and setting times, see orrery.live's night sky.</p>
 			<h4>How far is it through the Earth?</h4>
@@ -299,7 +309,7 @@
 			<h4>Does it send my location anywhere?</h4>
 			<p>No. Your GPS position and the camera picture are used only on your phone. The only thing that goes online is a place name you type into the &quot;looking from&quot; search, which is looked up by Photon (OpenStreetMap data) or Open-Meteo's place finder. If you turn on earthquakes, the page downloads the US Geological Survey's public list, the same for everyone, and your position is not sent. If you share a view, the link goes only where you send it, with the place rounded to about a kilometre and no name for your GPS position or a street address.</p>
 		</div>
-		<p class="note">Just for fun. To name the hills, mountains and towns on your horizon instead, see <a href="https://scanthehorizon.app/">Scan the Horizon</a>. More tools at <a href="https://games.adamwoodland.com/">Adam's Arcade</a>. Made by <a href="https://adamwoodland.com/">Adam Woodland</a>. Design, code and content developed with the assistance of AI (Anthropic Claude).</p>
+		<p class="note">Just for fun. More on <a href="/antipodes/">antipodes: what is on the other side of the world</a>. To name the hills, mountains and towns on your horizon instead, see <a href="https://scanthehorizon.app/">Scan the Horizon</a>. More tools at <a href="https://games.adamwoodland.com/">Adam's Arcade</a>. Made by <a href="https://adamwoodland.com/">Adam Woodland</a>. Design, code and content developed with the assistance of AI (Anthropic Claude).</p>
 	</div>
 </dialog>
 </body>

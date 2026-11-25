@@ -33,14 +33,35 @@ export const displayName = (raw) => FULL_NAMES[raw] || raw;
 
 let countries = []; // { name, bbox: [w, s, e, n], polys: [[ring, ...holes], ...] }
 
+// Outlines that cross the 180° meridian (Fiji's and Russia's) jump from +180 to -180 inside a ring, which a
+// flat point-in-polygon test reads as an edge across the whole map: before 2026-11-26 every point near
+// 16.5°S, inland Queensland and the open Indian Ocean included, came out as Fiji. Such rings are unwrapped
+// into one continuous run of longitudes (which may then pass ±180), and countryAt also tries lon ± 360.
+// Antarctica's ring jumps once, going round the pole, so it is left alone (countryAt's -83.5° rule).
+function unwrap(ring) {
+	let jumps = 0;
+	for (let i = 1; i < ring.length; i++) if (Math.abs(ring[i][0] - ring[i - 1][0]) > 180) jumps++;
+	if (!jumps || jumps % 2) return ring;
+	const out = [[ring[0][0], ring[0][1]]];
+	for (let i = 1; i < ring.length; i++) {
+		let x = ring[i][0];
+		const px = out[i - 1][0];
+		while (x - px > 180) x -= 360;
+		while (px - x > 180) x += 360;
+		out.push([x, ring[i][1]]);
+	}
+	return out;
+}
+
 export function load(topo, topojson) {
 	const feats = topojson.feature(topo, topo.objects.countries).features;
 	countries = feats.map((f) => {
 		const g = f.geometry;
-		const polys = !g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+		const raw = !g ? [] : g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+		const polys = raw.map((poly) => poly.map(unwrap));
 		let w = 180, s = 90, e = -180, n = -90;
 		for (const poly of polys) for (const [x, y] of poly[0]) { if (x < w) w = x; if (x > e) e = x; if (y < s) s = y; if (y > n) n = y; }
-		return { name: displayName(f.properties.name), bbox: [w, s, e, n], polys };
+		return { name: displayName(f.properties.name), bbox: [w, s, e, n], polys, wraps: w < -180 || e > 180 };
 	}).filter((c) => c.polys.length);
 	return countries.length;
 }
@@ -58,12 +79,15 @@ export function countryAt(lat, lon) {
 	if (lat < -83.5) return 'Antarctica';
 	for (const c of countries) {
 		const [w, s, e, n] = c.bbox;
-		if (lon < w || lon > e || lat < s || lat > n) continue;
-		for (const poly of c.polys) {
-			if (!inRing(lon, lat, poly[0])) continue;
-			let hole = false;
-			for (let k = 1; k < poly.length; k++) if (inRing(lon, lat, poly[k])) { hole = true; break; }
-			if (!hole) return c.name;
+		if (lat < s || lat > n) continue;
+		for (const x of c.wraps ? [lon, lon + 360, lon - 360] : [lon]) {
+			if (x < w || x > e) continue;
+			for (const poly of c.polys) {
+				if (!inRing(x, lat, poly[0])) continue;
+				let hole = false;
+				for (let k = 1; k < poly.length; k++) if (inRing(x, lat, poly[k])) { hole = true; break; }
+				if (!hole) return c.name;
+			}
 		}
 	}
 	return null;

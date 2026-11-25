@@ -7,10 +7,12 @@
 //    connection; cross-origin requests aren't touched.
 //  - Images, and the two pictures the page fetch()es (destination ""): CACHE-FIRST.
 //  - Bump CACHE on every deploy that changes a precached file.
-const CACHE = 'lud-v7';
+//  - The shell is '/', never '/index.html': that URL 301s to '/' (lookupanddown-canonical-host, since
+//    2026-11-26), so a precached copy would be a redirected response, which browsers refuse for a
+//    navigation (an offline link would fail).
+const CACHE = 'lud-v8';
 const CORE = [
 	'/',
-	'/index.html',
 	'/tte.css',
 	'/tte.js',
 	'/skyview.js',
@@ -78,7 +80,7 @@ self.addEventListener('fetch', (e) => {
 				// ignoreSearch: a navigation can carry a query; the shell is the same page.
 				const hit = await caches.match(req, { ignoreSearch: req.mode === 'navigate' });
 				if (hit) return hit;
-				if (req.mode === 'navigate') { const shell = await caches.match('/index.html'); if (shell) return shell; }
+				if (req.mode === 'navigate') { const shell = await caches.match('/'); if (shell) return shell; }
 				return Response.error();
 			})
 	);

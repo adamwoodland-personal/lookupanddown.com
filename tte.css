@@ -137,6 +137,9 @@ dialog.sheet::backdrop { background: rgba(2, 5, 8, 0.72); }
 	background: #08121a; border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 0 40px rgba(76, 242, 255, 0.15);
 }
 .sheet h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cyan); text-shadow: 0 0 12px rgba(76, 242, 255, 0.5); }
+.sheet h1 .tag { display: block; margin-top: 6px; font-size: 15px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink); text-shadow: none; }
+/* The intro is open in the HTML before tte.js makes it modal: place it where the modal one will be, so it doesn't jump. */
+#intro[open]:not(:modal) { position: fixed; inset: 0; z-index: 30; height: fit-content; }
 .sheet h2 { margin: 0 0 12px; font-size: 20px; color: var(--cyan); }
 .sheet h3 { margin: 16px 0 4px; font-size: 16px; }
 .sheet h4 { margin: 12px 0 2px; font-size: 15px; color: var(--cyan); }

@@ -454,7 +454,16 @@ $('camBtn').addEventListener('click', () => (S.stream ? stopCamera() : startCame
 let lastFocus = null;
 function openSheet(el) {
 	lastFocus = document.activeElement;
-	if (!el.open) el.showModal();
+	// The intro is open in the HTML (so its text shows, and paints, before this script runs), but not
+	// modal: reopen it with showModal for the focus trap and the inert page behind.
+	if (el.open) {
+		let modal = false;
+		try { modal = el.matches(':modal'); } catch (e) { /* no :modal support: reopen it */ }
+		if (modal) return;
+		el.close();
+		lastFocus = document.activeElement;
+	}
+	el.showModal();
 }
 function closeSheet(el) { if (el.open) el.close(); }
 for (const sh of document.querySelectorAll('dialog.sheet')) {

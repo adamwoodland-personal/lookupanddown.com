@@ -10,6 +10,8 @@ Share, on the card, sends a link to the place and to what the view is on: whoeve
 
 Earthquakes are a setting, off by default (tap ⓘ and tick **Show recent earthquakes**): the last seven days' earthquakes of magnitude 4.5 and above, from the US Geological Survey's public list, appear inside the glass Earth where they happened, each at its real depth. Put the circle on one and the card gives its magnitude, place and depth, how far it is through the Earth, and an estimate of how long its waves took to reach you. It is a look back, not a warning: the list is published some minutes after each earthquake.
 
+An article, [What is on the other side of the world?](https://lookupanddown.com/antipodes/) (`antipodes/`, with `guide.css`), lists the antipodes of 32 cities, worked out from the page's own map by a script kept outside this repo, so the article and the app agree.
+
 A card names whatever is in the middle of the view: a planet, star or constellation above the horizon; below it, the country or ocean on the far side, how far away it is, and which of the Earth's layers the line of sight passes through. Without a compass (on a computer, say) you drag to look around.
 
 Just for fun. Everything runs in the browser; the location and camera picture never leave the phone. Only a place name you type into the "looking from" search is sent, to Photon (OpenStreetMap) or Open-Meteo's place finder. With earthquakes turned on, the page downloads the USGS's public list, the same for everyone; your position is not sent.
