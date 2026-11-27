@@ -346,6 +346,7 @@ function modeUi() {
 	const b = $('modeBtn');
 	b.hidden = src.status !== 'ok'; // only on a phone whose compass has worked
 	b.textContent = S.aimMode === 'sensor' ? 'Drag instead' : 'Use compass';
+	b.classList.toggle('lit', S.aimMode !== 'sensor'); // "Use compass" stands out (tte.css)
 }
 // "Use compass" works whenever the compass has worked, even with no reading in the last moments
 // (the phone may be still): the view follows the next one.

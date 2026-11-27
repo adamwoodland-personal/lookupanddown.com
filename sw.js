@@ -10,7 +10,7 @@
 //  - The shell is '/', never '/index.html': that URL 301s to '/' (lookupanddown-canonical-host, since
 //    2026-11-26), so a precached copy would be a redirected response, which browsers refuse for a
 //    navigation (an offline link would fail).
-const CACHE = 'lud-v8';
+const CACHE = 'lud-v9';
 const CORE = [
 	'/',
 	'/tte.css',

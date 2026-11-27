@@ -99,6 +99,10 @@ body.night #cam.on { opacity: 0.32; }
 }
 #placeBtn { justify-self: start; }
 #modeBtn { flex: none; font-size: 13px; padding: 4px 12px; }
+/* While dragging, "Use compass" is the way back to following the phone, so it is filled in the accent
+   instead of looking like every other glass chip (2026-11-28, as scanthehorizon.app's "Use compass").
+   Styled by ID so .chip's glass can't win; "Drag instead" stays a plain chip. */
+#modeBtn.lit { background: var(--amber); border-color: var(--amber); color: #1b1204; font-weight: 600; box-shadow: 0 0 10px rgba(255, 181, 71, 0.45); }
 #targetChip { grid-column: 1 / -1; justify-self: start; border-color: rgba(255, 181, 71, 0.6); color: #ffe3b5; font-size: 13px; padding: 4px 12px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
